@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Escape the squares! - Dinamik Renkli Arka Plan</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            /* Arka plan artık JavaScript tarafından çizilecek */
+            background-color: #000; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+        #scoreBoard {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            z-index: 10;
+        }
+        #towerHealth {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            color: #FF4500;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            z-index: 10;
+        }
+        #hitFeedback {
+            position: absolute;
+            color: gold;
+            font-family: Impact, sans-serif;
+            font-size: 30px;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        #upgradeStatus {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            text-align: right;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border-radius: 5px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .can-upgrade {
+            color: #32CD32;
+            font-weight: bold;
+        }
+        .upgrade-name {
+            font-weight: bold;
+        }
+
+        /* --- Dokunmatik Kontrol Stilleri --- */
+        #touchControls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            user-select: none;
+            touch-action: none;
+            opacity: 0.8;
+        }
+        #touchPad {
+            width: 150px;
+            height: 150px;
+            background-color: rgba(50, 50, 50, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        #touchStick {
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(0, 0);
+        }
+        /* Dokunmatik Yükseltme Butonu */
+        #upgradeButton {
+            position: absolute;
+            top: 100px; 
+            right: 10px;
+            z-index: 10;
+            padding: 10px 15px;
+            background-color: #32CD32;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            display: none; 
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(50, 205, 50, 0.8);
+        }
+         /* Ağır Silah Cooldown Göstergesi */
+        #heavyWeaponStatus {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 5px;
+            text-align: center;
+        }
+        .ready {
+            color: gold;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    <div id="scoreBoard">Puan: 0 | Oyuncu Canı: 10</div>
+    <div id="towerHealth">Kule Canı: 100</div>
+    <div id="hitFeedback"></div>
+    <div id="upgradeStatus"></div>
+    <div id="upgradeButton" style="display:none;">GELİŞTİR (U)</div>
+    <div id="heavyWeaponStatus">Ağır Silah (Q): Yükleniyor...</div>
+
+    <div id="touchControls">
+        <div id="touchPad">
+            <div id="touchStick"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const towerHealthDisplay = document.getElementById('towerHealth');
+        const hitFeedback = document.getElementById('hitFeedback');
+        const upgradeStatus = document.getElementById('upgradeStatus');
+        const upgradeButton = document.getElementById('upgradeButton');
+        const heavyWeaponStatus = document.getElementById('heavyWeaponStatus');
+
+
+        // --- Oyun Ayarları ve Değişkenler ---
+        let gameCenter;
+        let gameRadius;
+        let score = 0;
+        const playerHealth = 10;
+        let towerHealth = 100;
+        const towerDamage = 10;
+
+        const enemySize = 25;
+        let projectileSpeed = 7;
+        const enemySpawnRate = 60;
+        let frameCount = 0;
+        let keys = { w: false, a: false, s: false, d: false, u: false, q: false };
+        let enemies = [];
+        let projectiles = [];
+        let particles = []; 
+
+        // --- Yeni Ağır Silah Ayarları ---
+        let heavyWeaponCooldown = 0;
+        const HEAVY_WEAPON_COOLDOWN_MAX = 300; // 5 saniye
+        const HEAVY_WEAPON_DAMAGE_RADIUS = 150;
+        let isFiringHeavy = false; 
+        let explosionCenter = { x: 0, y: 0 };
+
+        // --- Zorluk Ayarları ---
+        let enemySpawnRateModifier = 0;
+        const SPAWN_RATE_DECREASE_INTERVAL = 300; 
+        const MIN_SPAWN_RATE = 30; 
+
+
+        // Kule Objesi
+        const tower = {
+            size: 40,
+            color: '#A9A9A9',
+            x: 0,
+            y: 0,
+        };
+
+        // Oyuncu Objesi
+        const player = {
+            x: 0,
+            y: 0,
+            size: 20,
+            color: 'blue',
+            speed: 5,
+            velX: 0,
+            velY: 0
+        };
+
+        // RASTGELE PUAN KADEMELERİ VE EŞLEŞEN DÜŞMAN RENKLERİ (ÖZEL RENKLER)
+        const LOOT_TIERS = [
+            { name: 'Common', points: 1, color: '#F5F5F5', enemyColor: '#F5F5F5', chance: 0.500 }, 
+            { name: 'Uncommon', points: 3, color: '#98FB98', enemyColor: '#98FB98', chance: 0.250 },
+            { name: 'Rare', points: 5, color: '#0000FF', enemyColor: '#0000FF', chance: 0.150 },
+            { name: 'Epic', points: 10, color: '#4B0082', enemyColor: '#4B0082', chance: 0.070 },
+            { name: 'Mythical', points: 15, color: '#FF0000', enemyColor: '#FF0000', chance: 0.025 },
+            { name: 'Legend', points: 20, color: '#FFFF00', enemyColor: '#FFFF00', chance: 0.004 },
+            { name: 'Private', points: 30, color: '#FF1493', enemyColor: '#FF1493', chance: 0.001, isChromatic: true } // Rainbow
+        ];
+        
+        // SİLAH GELİŞTİRME KADEMELERİ (ÖZEL RENKLER)
+        const UPGRADE_TIERS = [
+            { name: 'Common', cost: 0, speedMult: 1.0, projectiles: 1, color: '#F5F5F5' }, 
+            { name: 'Uncommon', cost: 50, speedMult: 1.1, projectiles: 1, color: '#98FB98' },
+            { name: 'Rare', cost: 150, speedMult: 1.2, projectiles: 2, color: '#0000FF' },
+            { name: 'Epic', cost: 350, speedMult: 1.3, projectiles: 3, color: '#4B0082' },
+            { name: 'Mythic', cost: 600, speedMult: 1.4, projectiles: 4, color: '#FF0000' },
+            { name: 'Legend', cost: 1000, speedMult: 1.5, projectiles: 5, color: '#FFFF00' },
+            { name: 'Private', cost: 1500, speedMult: 1.6, projectiles: 6, color: 'hsl(0, 100%, 50%)', isChromatic: true } // Rainbow
+        ];
+
+        let currentUpgradeLevel = 0;
+
+
+        // --- Dokunmatik Kontrol Değişkenleri ve İlk Değerler ---
+        const touchPad = document.getElementById('touchPad');
+        const touchStick = document.getElementById('touchStick');
+        const touchControls = document.getElementById('touchControls');
+
+        let touchPadCenter;
+        let activeTouch = null; 
+
+        if (!('ontouchstart' in window)) {
+            touchControls.style.display = 'none';
+        }
+
+
+        // --- Boyutlandırma ve Merkezleme ---
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const minDimension = Math.min(canvas.width, canvas.height);
+            gameCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+            gameRadius = minDimension / 2 - 40;
+            
+            player.x = gameCenter.x;
+            player.y = gameCenter.y;
+            tower.x = gameCenter.x;
+            tower.y = gameCenter.y;
+            
+            updateScoreBoard(); 
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+
+        // --- Yardımcı Fonksiyonlar ---
+
+        function getRandomTier() {
+            const random = Math.random();
+            let cumulativeChance = 0;
+
+            for (const tier of LOOT_TIERS) {
+                cumulativeChance += tier.chance;
+                if (random < cumulativeChance) {
+                    return tier;
+                }
+            }
+            return LOOT_TIERS[LOOT_TIERS.length - 1];
+        }
+
+        function updateUpgradeStatus() {
+            const currentTier = UPGRADE_TIERS[currentUpgradeLevel];
+            const nextLevel = currentUpgradeLevel + 1;
+            
+            let displayColor = currentTier.color;
+            
+            // Private seviyedeyse dinamik renk kullan (Geliştirme tablosu için)
+            if(currentTier.isChromatic) {
+                const hue = (frameCount * 5) % 360; 
+                displayColor = `hsl(${hue}, 100%, 50%)`;
+            }
+
+            let statusHTML = `
+                **MEVCUT SİLAH**
+                <span class="upgrade-name" style="color:${displayColor}">${currentTier.name}</span> (${currentTier.projectiles} mermi)
+                <hr style="border: none; border-top: 1px solid #444; margin: 5px 0;">
+            `;
+
+            if (nextLevel < UPGRADE_TIERS.length) {
+                const nextTier = UPGRADE_TIERS[nextLevel];
+                let canUpgrade = score >= nextTier.cost;
+                
+                let upgradeText = `<span class="upgrade-name" style="color:${nextTier.color}">${nextTier.name}</span>`;
+                let costText = `${nextTier.cost} Puan`;
+                
+                if (canUpgrade) {
+                    costText = `<span class="can-upgrade">${nextTier.cost} Puan (U tuşu)</span>`;
+                    upgradeButton.style.display = 'block';
+                    upgradeButton.textContent = `GELİŞTİR (${nextTier.cost} Puan)`;
+                } else {
+                    upgradeButton.style.display = 'none';
+                }
+
+                statusHTML += `
+                    **SIRADAKİ GELİŞTİRME**
+                    <div style="margin-top: 5px;">
+                        Silah: ${upgradeText}<br>
+                        Maliyet: ${costText}<br>
+                        Kazanç: ${nextTier.projectiles} Mermi (+Hız)
+                    </div>
+                `;
+            } else {
+                upgradeButton.style.display = 'none';
+                statusHTML += `
+                    <div style="color: gold; margin-top: 10px;">MAKSİMUM SEVİYE ULAŞILDI!</div>
+                `;
+            }
+
+            upgradeStatus.innerHTML = statusHTML;
+            updateHeavyWeaponStatus(); 
+        }
+        
+        function updateHeavyWeaponStatus() {
+            const cooldownText = heavyWeaponCooldown > 0 
+                ? `Yükleniyor: ${Math.ceil(heavyWeaponCooldown / 60)}s` 
+                : `<span class="ready">HAZIR (Q tuşu)</span>`;
+            
+            heavyWeaponStatus.innerHTML = `Ağır Silah (Q): ${cooldownText}`;
+        }
+
+
+        function updateScoreBoard() {
+            scoreBoard.textContent = `Puan: ${score} | Oyuncu Canı: ${playerHealth}`;
+            towerHealthDisplay.textContent = `Kule Canı: ${Math.max(0, towerHealth)}`;
+
+            if (towerHealth <= 0) {
+                alert(`KULE YIKILDI! OYUN BİTTİ! Son Puanınız: ${score}.`);
+                document.location.reload();
+            }
+            updateUpgradeStatus();
+        }
+        
+        function showHitFeedback(text, color, x, y) {
+            hitFeedback.textContent = text;
+            hitFeedback.style.color = color;
+            hitFeedback.style.left = `${x - 50}px`;
+            hitFeedback.style.top = `${y - 50}px`;
+            hitFeedback.style.opacity = 1;
+            hitFeedback.style.transform = 'translateY(-10px)';
+
+            setTimeout(() => {
+                hitFeedback.style.opacity = 0;
+                hitFeedback.style.transform = 'translateY(0)';
+            }, 500);
+        }
+
+        function createParticles(x, y, color, amount = 5) {
+            for (let i = 0; i < amount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 1;
+                particles.push({
+                    x: x,
+                    y: y,
+                    velX: Math.cos(angle) * speed,
+                    velY: Math.sin(angle) * speed,
+                    color: color,
+                    life: 60, 
+                    size: Math.random() * 3 + 1
+                });
+            }
+        }
+
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            const spawnDist = gameRadius + 50;
+
+            switch (side) {
+                case 0: x = gameCenter.x + (Math.random() * 2 - 1) * gameRadius; y = gameCenter.y - spawnDist; break;
+                case 1: x = gameCenter.x + spawnDist; y = gameCenter.y + (Math.random() * 2 - 1) * gameRadius; break;
+                case 2: x = gameCenter.x + (Math.random() * 2 - 1) * gameRadius; y = gameCenter.y + spawnDist; break;
+                case 3: x = gameCenter.x - spawnDist; y = gameCenter.y + (Math.random() * 2 - 1) * gameRadius; break;
+            }
+
+            const tier = getRandomTier();
+            const angle = Math.atan2(tower.y - y, tower.x - x);
+            const baseSpeed = 1;
+            const speed = baseSpeed + Math.random() * 1.5;
+
+            enemies.push({
+                x: x,
+                y: y,
+                velX: Math.cos(angle) * speed,
+                velY: Math.sin(angle) * speed,
+                color: tier.enemyColor,
+                tierName: tier.name,
+                isChromatic: tier.isChromatic || false,
+                hue: Math.random() * 360 
+            });
+        }
+        
+        function fireProjectile(clickX, clickY) {
+            const currentTier = UPGRADE_TIERS[currentUpgradeLevel];
+            const numProjectiles = currentTier.projectiles;
+            const baseAngle = Math.atan2(clickY - player.y, clickX - player.x);
+
+            for (let i = 0; i < numProjectiles; i++) {
+                let angle = baseAngle;
+                
+                if (numProjectiles > 1) {
+                    const spreadAngle = (i - (numProjectiles - 1) / 2) * 0.15; 
+                    angle += spreadAngle;
+                }
+
+                projectiles.push({
+                    x: player.x,
+                    y: player.y,
+                    velX: Math.cos(angle) * projectileSpeed,
+                    velY: Math.sin(angle) * projectileSpeed
+                });
+            }
+        }
+        
+        function fireHeavyWeapon() {
+            if (heavyWeaponCooldown > 0 || enemies.length === 0) return;
+            
+            explosionCenter.x = tower.x; 
+            explosionCenter.y = tower.y;
+
+            heavyWeaponCooldown = HEAVY_WEAPON_COOLDOWN_MAX;
+            isFiringHeavy = true;
+            
+            let totalPointsGained = 0;
+            enemies = enemies.filter(enemy => {
+                const dist = Math.hypot(explosionCenter.x - enemy.x, explosionCenter.y - enemy.y);
+                if (dist < HEAVY_WEAPON_DAMAGE_RADIUS) {
+                    const tier = LOOT_TIERS.find(t => t.name === enemy.tierName) || LOOT_TIERS[0];
+                    totalPointsGained += tier.points;
+                    
+                    const particleColor = enemy.isChromatic ? enemy.color : tier.color; 
+                    createParticles(enemy.x, enemy.y, particleColor, 15);
+                    
+                    return false; 
+                }
+                return true; 
+            });
+            
+            if (totalPointsGained > 0) {
+                score += totalPointsGained;
+                showHitFeedback(`💥 TEMİZLİK +${totalPointsGained}`, 'red', explosionCenter.x, explosionCenter.y);
+            }
+            
+            updateScoreBoard();
+            
+            setTimeout(() => {
+                isFiringHeavy = false;
+            }, 200);
+        }
+        
+        function upgradeWeapon() {
+            const nextLevel = currentUpgradeLevel + 1;
+            if (nextLevel < UPGRADE_TIERS.length) {
+                const nextTier = UPGRADE_TIERS[nextLevel];
+                if (score >= nextTier.cost) {
+                    score -= nextTier.cost; 
+                    currentUpgradeLevel = nextLevel; 
+                    projectileSpeed = 7 * nextTier.speedMult; 
+                    updateScoreBoard(); 
+                }
+            }
+        }
+
+
+        // --- Oyun Güncellemesi (Update) ---
+
+        function update() {
+            // Ağır Silah Geri Sayımı
+            if (heavyWeaponCooldown > 0) {
+                heavyWeaponCooldown--;
+            }
+
+            // Oyuncu Hareketi
+            player.velX = 0;
+            player.velY = 0;
+            if (keys.w) player.velY = -player.speed;
+            if (keys.s) player.velY = player.speed;
+            if (keys.a) player.velX = -player.speed;
+            if (keys.d) player.velX = player.speed;
+
+            if (player.velX !== 0 && player.velY !== 0) {
+                const diagSpeed = player.speed / Math.sqrt(2);
+                player.velX = Math.sign(player.velX) * diagSpeed;
+                player.velY = Math.sign(player.velY) * diagSpeed;
+            }
+
+            player.x += player.velX;
+            player.y += player.velY;
+            
+            const distToCenter = Math.hypot(player.x - gameCenter.x, player.y - gameCenter.y);
+            if (distToCenter + player.size / 2 > gameRadius) {
+                const angle = Math.atan2(player.y - gameCenter.y, player.x - gameCenter.x);
+                player.x = gameCenter.x + Math.cos(angle) * (gameRadius - player.size / 2);
+                player.y = gameCenter.y + Math.sin(angle) * (gameRadius - player.size / 2);
+            }
+
+            // Kromatik/Private Seviye Dinamik Renk Güncellemesi
+            enemies.forEach(enemy => {
+                if (enemy.isChromatic) {
+                    enemy.hue = (enemy.hue + 5) % 360; 
+                    enemy.color = `hsl(${enemy.hue}, 100%, 50%)`;
+                }
+            });
+
+            // Silah seviyesi private ise oyuncu rengini de değiştir
+            if (UPGRADE_TIERS[currentUpgradeLevel].isChromatic) {
+                const hue = (frameCount * 10) % 360; 
+                player.color = `hsl(${hue}, 100%, 70%)`;
+            } else {
+                player.color = 'blue'; 
+            }
+            updateUpgradeStatus(); 
+
+            // Dinamik Zorluk Kontrolü ve Düşman Oluşturma
+            frameCount++;
+            const expectedModifier = Math.floor(score / SPAWN_RATE_DECREASE_INTERVAL) * 5;
+            if (enemySpawnRateModifier < expectedModifier) {
+                enemySpawnRateModifier = expectedModifier;
+            }
+            const currentSpawnRate = Math.max(enemySpawnRate - enemySpawnRateModifier, MIN_SPAWN_RATE);
+            
+            if (frameCount % currentSpawnRate === 0) {
+                spawnEnemy();
+            }
+
+            // Çarpışmalar ve Puanlama
+            let nextProjectiles = [];
+            let remainingEnemies = [...enemies];
+
+            projectiles.forEach(p => {
+                p.x += p.velX;
+                p.y += p.velY;
+
+                if (Math.hypot(p.x - gameCenter.x, p.y - gameCenter.y) > gameRadius + 10) return;
+                
+                let hit = false;
+                let newRemainingEnemies = [];
+                
+                remainingEnemies.forEach(enemy => {
+                    const distance = Math.hypot(p.x - enemy.x, p.y - enemy.y);
+                    if (distance < 5 + enemySize / 2 && !hit) {
+                        hit = true;
+                        
+                        const tier = LOOT_TIERS.find(t => t.name === enemy.tierName) || LOOT_TIERS[0];
+                        score += tier.points;
+                        showHitFeedback(`${tier.name} +${tier.points}`, tier.color, enemy.x, enemy.y);
+                        
+                        const particleColor = enemy.isChromatic ? enemy.color : tier.color; 
+                        createParticles(enemy.x, enemy.y, particleColor, 10); 
+                        
+                        updateScoreBoard();
+                    } else {
+                        newRemainingEnemies.push(enemy);
+                    }
+                });
+                
+                remainingEnemies = newRemainingEnemies;
+
+                if (!hit) {
+                    nextProjectiles.push(p);
+                }
+            });
+            projectiles = nextProjectiles;
+            
+            // Düşman Hareketi ve Kule Çarpışması
+            let finalEnemies = [];
+            remainingEnemies.forEach(enemy => {
+                enemy.x += enemy.velX;
+                enemy.y += enemy.velY;
+
+                const distanceToTower = Math.hypot(tower.x - enemy.x, tower.y - enemy.y);
+                if (distanceToTower < tower.size / 2 + enemySize / 2) {
+                    towerHealth -= towerDamage;
+                    updateScoreBoard();
+                    createParticles(enemy.x, enemy.y, 'red', 5);
+                } else {
+                    finalEnemies.push(enemy);
+                }
+            });
+            enemies = finalEnemies;
+            
+            // Parçacık Güncellemesi
+            particles = particles.filter(p => {
+                p.x += p.velX;
+                p.y += p.velY;
+                p.velY += 0.05; 
+                p.life--;
+                return p.life > 0;
+            });
+        }
+
+
+        // --- Kullanıcı Etkileşimi (Klavye ve Dokunmatik) ---
+
+        // Klavye Olayları (Masaüstü için)
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') keys.w = true;
+            if (key === 'a') keys.a = true;
+            if (key === 's') keys.s = true;
+            if (key === 'd') keys.d = true;
+            
+            if (key === 'u' && !keys.u) {
+                keys.u = true;
+                upgradeWeapon();
+            }
+            if (key === 'q' && !keys.q) {
+                keys.q = true;
+                fireHeavyWeapon();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w') keys.w = false;
+            if (key === 'a') keys.a = false;
+            if (key === 's') keys.s = false;
+            if (key === 'd') keys.d = false;
+            if (key === 'u') keys.u = false;
+            if (key === 'q') keys.q = false;
+        });
+
+        // Mouse Ateşleme (Masaüstü için)
+        canvas.addEventListener('click', (e) => {
+            fireProjectile(e.clientX, e.clientY);
+        });
+
+        // Dokunmatik Yükseltme Butonu
+        upgradeButton.addEventListener('click', upgradeWeapon);
+
+        // --- Dokunmatik Kontrol Mantığı (Mobil/Tablet için) ---
+
+        function handleTouchStart(e) {
+            e.preventDefault(); 
+            
+            const touchPadRect = touchPad.getBoundingClientRect();
+            
+            Array.from(e.changedTouches).forEach(touch => {
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+                const touchId = touch.identifier;
+
+                // Dokunuş kontrol pedi alanında mı? (Sol alt köşede)
+                if (
+                    touchX >= touchPadRect.left && 
+                    touchX <= touchPadRect.right && 
+                    touchY >= touchPadRect.top && 
+                    touchY <= touchPadRect.bottom
+                ) {
+                    // Kontrol pedi alanında. Hareketi başlat.
+                    if (!activeTouch) {
+                        activeTouch = touchId;
+                        touchPadCenter = { 
+                            x: touchPadRect.left + touchPadRect.width / 2, 
+                            y: touchPadRect.top + touchPadRect.height / 2 
+                        };
+                        handleMovement(touchX, touchY);
+                    }
+                } else {
+                    // Ekranın geri kalanında. Ateş et.
+                    fireProjectile(touchX, touchY);
+                }
+            });
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+
+            if (!activeTouch) return;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                if (touch.identifier === activeTouch) {
+                    handleMovement(touch.clientX, touch.clientY);
+                }
+            });
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+
+            Array.from(e.changedTouches).forEach(touch => {
+                if (touch.identifier === activeTouch) {
+                    activeTouch = null;
+                    keys.w = keys.a = keys.s = keys.d = false;
+                    touchStick.style.transform = `translate(0px, 0px)`;
+                }
+            });
+        }
+
+        function handleMovement(currentX, currentY) {
+            const maxDist = touchPad.offsetWidth / 2;
+            
+            let deltaX = currentX - touchPadCenter.x;
+            let deltaY = currentY - touchPadCenter.y;
+            
+            let dist = Math.hypot(deltaX, deltaY);
+            
+            if (dist > maxDist) {
+                deltaX = (deltaX / dist) * maxDist;
+                deltaY = (deltaY / dist) * maxDist;
+                dist = maxDist;
+            }
+
+            touchStick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            
+            const threshold = maxDist * 0.1; 
+            
+            keys.w = deltaY < -threshold;
+            keys.s = deltaY > threshold;
+            keys.a = deltaX < -threshold;
+            keys.d = deltaX > threshold;
+        }
+
+        // Dokunmatik olay dinleyicilerini atama
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+
+        // --- Çizim Fonksiyonları ---
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawTower() {
+            ctx.fillStyle = tower.color;
+            ctx.save();
+            ctx.translate(tower.x, tower.y);
+            ctx.rotate(Math.PI / 8);
+            ctx.fillRect(-tower.size / 2, -tower.size / 2, tower.size, tower.size);
+            ctx.restore();
+            
+            // Kule Can Çubuğu
+            const barWidth = 50;
+            const barHeight = 6;
+            const healthRatio = towerHealth / 100;
+
+            ctx.fillStyle = '#444';
+            ctx.fillRect(tower.x - barWidth / 2, tower.y - tower.size / 2 - barHeight - 5, barWidth, barHeight);
+            
+            ctx.fillStyle = healthRatio > 0.3 ? '#32CD32' : '#FF4500';
+            ctx.fillRect(tower.x - barWidth / 2, tower.y - tower.size / 2 - barHeight - 5, barWidth * healthRatio, barHeight);
+        }
+
+        function drawEnemy(enemy) {
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x - enemySize / 2, enemy.y - enemySize / 2, enemySize, enemySize);
+        }
+
+        function drawProjectile(p) {
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawHeavyWeaponEffect() {
+            if (isFiringHeavy && heavyWeaponCooldown < HEAVY_WEAPON_COOLDOWN_MAX - 10) {
+                ctx.fillStyle = 'rgba(255, 69, 0, 0.5)'; 
+                ctx.beginPath();
+                ctx.arc(explosionCenter.x, explosionCenter.y, HEAVY_WEAPON_DAMAGE_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // --- Yeni Dinamik Arka Plan Çizimi ---
+        function drawBackground() {
+            const hue = (frameCount * 0.5) % 360; // Yavaş renk değişimi (0.5 hızıyla)
+            
+            // 1. Dış Alan (Canvas'ın tamamı)
+            ctx.fillStyle = `hsl(${hue}, 80%, 10%)`; // Koyu, hafif renkli arka plan
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Oyun Alanı (Daire)
+            const gradient = ctx.createRadialGradient(
+                gameCenter.x, gameCenter.y, gameRadius * 0.5, // İç dairenin merkezi ve yarıçapı
+                gameCenter.x, gameCenter.y, gameRadius // Dış dairenin merkezi ve yarıçapı
+            );
+
+            // Gökkuşağı renkleri
+            gradient.addColorStop(0, `hsl(${(hue + 90) % 360}, 90%, 50%)`); // İç (Canlı renk)
+            gradient.addColorStop(0.5, `hsl(${(hue + 180) % 360}, 70%, 20%)`); // Orta (Daha koyu renk)
+            gradient.addColorStop(1, '#1E1E1E'); // Dışa doğru neredeyse siyah
+            
+            ctx.beginPath();
+            ctx.arc(gameCenter.x, gameCenter.y, gameRadius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Sınır Çizgisi
+            ctx.strokeStyle = `hsl(${(hue + 270) % 360}, 100%, 70%)`; // Parlak renkli sınır
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+
+        // --- Oyun Döngüsü ---
+
+        function gameLoop() {
+            
+            drawBackground(); // Arka planı çiz
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(gameCenter.x, gameCenter.y, gameRadius, 0, Math.PI * 2);
+            ctx.clip(); // Sadece oyun alanı içinde çizim yapmasını sağla
+
+            update();
+
+            drawHeavyWeaponEffect(); 
+            drawPlayer();
+            drawTower();
+            enemies.forEach(drawEnemy);
+            projectiles.forEach(drawProjectile);
+            drawParticles(); 
+
+            ctx.restore();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Oyunu başlat
+        updateScoreBoard();
+        gameLoop();
+    </script>
+
+</body>
+</html>
