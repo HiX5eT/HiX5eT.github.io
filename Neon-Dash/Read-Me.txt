@@ -2,6 +2,7 @@
 
 Neon Dash, klasik runner (koşu) mekaniklerini, Synthwave estetiği ve modern Triple Jump (Üçlü Zıplama) dinamikleriyle birleştiren yüksek tempolu bir tarayıcı oyunudur.
 Tamamen HTML5 Canvas ve saf JavaScript kullanılarak geliştirilmiştir.
+
 🎮 Oyun Özellikleri
 Çift Mod Desteği: Hem PC (Klavye/Fare) hem de Mobil (Dokunmatik) cihazlar için optimize edilmiş kontrol şeması.
 Triple Jump Sistemi: Havada 3 kez zıplama hakkı ile stratejik dikey hareket imkanı.
@@ -34,4 +35,5 @@ Kurulum ve Çalıştırma
 
 ".html" uzantılı bir dosya oluşturun (Örn: neon-dash.html).
 Kodların tamamını bu dosyaya yapıştırın.
+
 Dosyayı herhangi bir modern web tarayıcısı ile açın.
