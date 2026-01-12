@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Galaktik İstila: Mobil & PC</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; touch-action: none; }
+        canvas { display: block; }
+        #ui {
+            position: absolute; top: 10px; left: 10px;
+            color: #00f7ff; font-size: 20px; pointer-events: none;
+            text-shadow: 0 0 5px #000;
+        }
+        #health-bar { width: 150px; height: 8px; border: 1px solid #fff; margin-top: 5px; }
+        #health-fill { width: 100%; height: 100%; background: #ff4d4d; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    SKOR: <span id="score">0</span>
+    <div id="health-bar"><div id="health-fill"></div></div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const healthFill = document.getElementById('health-fill');
+
+let width, height, score = 0, health = 100, gameActive = true, frameCount = 0;
+const keys = {}, bullets = [], enemies = [], particles = [], stars = [];
+
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- KONTROLLER ---
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// Dokunmatik ve Mouse Kontrolü
+const pointer = { x: width / 2, y: height - 100, active: false };
+const handlePointer = (e) => {
+    pointer.active = true;
+    const t = e.touches ? e.touches[0] : e;
+    pointer.x = t.clientX;
+    pointer.y = t.clientY;
+};
+canvas.addEventListener('touchstart', handlePointer);
+canvas.addEventListener('touchmove', handlePointer);
+canvas.addEventListener('mousedown', () => pointer.active = true);
+canvas.addEventListener('mousemove', (e) => { if(pointer.active) handlePointer(e); });
+canvas.addEventListener('mouseup', () => pointer.active = false);
+
+// Yıldızlar
+for(let i=0; i<100; i++) stars.push({x: Math.random()*width, y: Math.random()*height, s: Math.random()*2, v: Math.random()*2+1});
+
+class Player {
+    constructor() { this.x = width/2; this.y = height-100; this.r = 20; }
+    update() {
+        if (pointer.active) {
+            // Yumuşak takip (lerp)
+            this.x += (pointer.x - this.x) * 0.2;
+            this.y += (pointer.y - 10 - this.y) * 0.2;
+        } else {
+            if (keys['ArrowLeft'] || keys['KeyA']) this.x -= 8;
+            if (keys['ArrowRight'] || keys['KeyD']) this.x += 8;
+            if (keys['ArrowUp'] || keys['KeyW']) this.y -= 8;
+            if (keys['ArrowDown'] || keys['KeyS']) this.y += 8;
+        }
+        this.x = Math.max(this.r, Math.min(width - this.r, this.x));
+        this.y = Math.max(this.r, Math.min(height - this.r, this.y));
+    }
+    draw() {
+        ctx.strokeStyle = '#00f7ff'; ctx.lineWidth = 3; ctx.shadowBlur = 15; ctx.shadowColor = '#00f7ff';
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y - 20); ctx.lineTo(this.x - 15, this.y + 15); ctx.lineTo(this.x + 15, this.y + 15);
+        ctx.closePath(); ctx.stroke(); ctx.shadowBlur = 0;
+    }
+}
+
+const player = new Player();
+
+function spawnEnemy() {
+    if(frameCount % 40 === 0) {
+        enemies.push({
+            x: Math.random()*width, y: -50, 
+            size: 30, speed: 3 + score/500, 
+            color: `hsl(${Math.random()*360}, 70%, 50%)`
+        });
+    }
+}
+
+function loop() {
+    if(!gameActive) return;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,width,height);
+
+    // Yıldızlar
+    ctx.fillStyle = '#fff';
+    stars.forEach(s => { s.y += s.v; if(s.y > height) s.y = -5; ctx.fillRect(s.x, s.y, s.s, s.s); });
+
+    player.update(); player.draw();
+
+    // Otomatik Ateş (Veya Boşluk)
+    if(frameCount % 10 === 0) bullets.push({x: player.x, y: player.y - 20});
+
+    bullets.forEach((b, i) => {
+        b.y -= 10; ctx.fillStyle = '#fff'; ctx.fillRect(b.x-2, b.y, 4, 12);
+        if(b.y < -20) bullets.splice(i, 1);
+    });
+
+    spawnEnemy();
+    enemies.forEach((e, ei) => {
+        e.y += e.speed;
+        ctx.fillStyle = e.color; ctx.shadowBlur = 10; ctx.shadowColor = e.color;
+        ctx.fillRect(e.x-e.size/2, e.y-e.size/2, e.size, e.size);
+
+        // Çarpışma: Mermi
+        bullets.forEach((b, bi) => {
+            if(Math.hypot(e.x-b.x, e.y-b.y) < e.size) {
+                enemies.splice(ei, 1); bullets.splice(bi, 1);
+                score += 10; scoreEl.innerText = score;
+            }
+        });
+
+        // Çarpışma: Oyuncu
+        if(Math.hypot(e.x-player.x, e.y-player.y) < e.size) {
+            health -= 20; healthFill.style.width = health + "%";
+            enemies.splice(ei, 1);
+            if(health <= 0) { alert("Oyun Bitti! Skor: " + score); location.reload(); }
+        }
+        if(e.y > height) enemies.splice(ei, 1);
+    });
+
+    frameCount++;
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

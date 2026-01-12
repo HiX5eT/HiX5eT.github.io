@@ -1,0 +1,24 @@
+Bu, HTML5 Canvas ve JavaScript kullanılarak geliştirilmiş, nesne yönelimli programlama (OOP) mantığına dayanan, yüksek tempolu bir arcade uzay savaşı oyunudur.
+
+🎮 Nasıl Oynanır?
+
+Oyunu çalıştırmak için index.html dosyasını herhangi bir modern tarayıcıda (Chrome, Brave, Firefox vb.) açmanız yeterlidir.
+
+Kontroller
+W / Yukarı Ok: Yukarı hareket
+S / Aşağı Ok: Aşağı hareket
+A / Sol Ok: Sola hareket
+D / Sağ Ok: Sağa hareket
+
+Özellikler
+Dinamik Zorluk: Skorunuz arttıkça düşmanların hızı ve geliş sıklığı artar.
+Gelişmiş Grafikler: Hareket izi (Motion Blur), neon parlama efektleri ve motor ateşi animasyonları.
+Parçacık Sistemi: Düşmanlar yok edildiğinde renkli patlama efektleri oluşur.
+Paralaks Arka Plan: Derinlik hissi yaratan farklı hızlarda kayan yıldız alanı.
+Can Sistemi: Hatalara karşı tolerans sağlayan can barı mekaniği.
+
+🛠️ Teknik Detaylar
+Oyunun temelinde yatan teknik yapılar şunlardır:
+Game Loop (Oyun Döngüsü): requestAnimationFrame kullanılarak saniyede 60 kare (FPS) akıcılık sağlanır.
+OOP (Nesne Yönelimli Programlama): Oyuncu, Düşman ve Mermiler kendi sınıflarına (class) ve metodlarına sahiptir.
+State Management: Oyunun aktif/pasif olma durumu ve skor takibi gerçek zamanlı yönetilir.
