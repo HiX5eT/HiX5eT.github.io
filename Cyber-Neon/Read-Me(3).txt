@@ -1,0 +1,63 @@
+🚀 NEON PROTOCOL: THE 25 WAVES
+Neon Protocol, saf JavaScript ve HTML5 Canvas kullanılarak geliştirilmiş, siber-punk temalı, yüksek tempolu bir top-down survival shooter oyunudur. Labirentlerin içinde hayatta kal, dalgalar halinde gelen virüsleri temizle ve 25. dalganın sonundaki ana sistemi kurtar!
+
+🎮 Oyun Özellikleri
+25 Zorlu Dalga: Her 5 dalgada bir karşınıza çıkan devasa Boss (Patron) düşmanlar.
+
+3 Farklı Harita Modu:
+
+Labirent: Stratejik hareket gerektiren karmaşık yapılar.
+
+Açık Alan: Tam bir kaos ve refleks testi.
+
+Dar Koridorlar: Kaçış alanı olmayan, yakın mesafe çatışmalar.
+
+Dinamik Aydınlatma: Gelişmiş görüş alanı (FOV) sistemi ile karanlıkta süzülen düşmanları keşfedin.
+
+Çapraz Platform: Hem PC (Fare & Klavye) hem de Mobil (Dokunmatik) cihazlar için optimize edilmiş kontrol şeması.
+
+Siber Ses Efektleri: Web Audio API ile gerçek zamanlı üretilen dijital sesler.
+
+🕹️ Nasıl Oynanır?
+Cihaz Seçimi: Giriş ekranında PC veya Dokunmatik modunu seçin.
+
+Harita Seçimi: Stratejinize uygun alanı belirleyin.
+
+Hayatta Kal: * PC: Hareket için WASD, ateş etmek için Fare Sol Tık.
+
+Mobil: Hareket için ekranın solunu, ateş etmek için sağını kullanın.
+
+Geliş: Düşmanları yok ederek seviye atlayın ve canınızı koruyun.
+
+🛠️ Teknik Detaylar
+Oyun, herhangi bir harici kütüphane veya oyun motoru (Phaser, Unity vb.) kullanılmadan Pure JavaScript ile yazılmıştır:
+
+Render: HTML5 Canvas API.
+
+Ses: Web Audio API (OscillatorNode).
+
+Yapay Zeka: Vektörel tabanlı basit takip ve çarpışma algoritmaları.
+
+Prosedürel Üretim: Hücresel otomata prensiplerine dayalı rastgele harita oluşturma.
+
+JavaScript
+
+// Örnek Görüş Alanı Hesaplaması
+let g = ctx.createRadialGradient(
+    canvas.width/2, canvas.height/2, 100, 
+    canvas.width/2, canvas.height/2, 600
+);
+🚀 Kurulum
+Bu projeyi yerel bilgisayarınızda çalıştırmak için:
+
+Depoyu klonlayın:
+
+Bash
+
+git clone https://github.com/kullaniciadi/neon-protocol.git
+index.html dosyasını herhangi bir modern tarayıcıda açın.
+
+📋 Lisans
+Bu proje MIT lisansı altında lisanslanmıştır. Özgürce değiştirebilir ve geliştirebilirsiniz.
+
+Geliştirici Notu: Bu oyun, "HTML ile kodlanabilecek en zor oyun" konsepti üzerine inşa edilmiştir. İyi şanslar operatör! 💾

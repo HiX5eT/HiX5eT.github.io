@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber-Neon: The 25 Waves</title>
+    <style>
+        body { margin: 0; background: #000; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
+        canvas { display: block; filter: contrast(1.2) brightness(1.1); }
+        
+        /* GİRİŞ EKRANI */
+        #overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .btn-group { margin: 20px; display: flex; gap: 10px; }
+        button { 
+            padding: 15px 30px; background: #033; color: #0f0; border: 2px solid #0f0; 
+            cursor: pointer; font-family: inherit; font-weight: bold; transition: 0.3s;
+        }
+        button:hover { background: #0f0; color: #000; box-shadow: 0 0 20px #0f0; }
+        .selected { background: #0f0 !important; color: #000 !important; }
+
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; z-index: 10; }
+        .stat-bar { width: 250px; height: 12px; background: #111; border: 1px solid #0f0; margin: 5px 0; }
+        #hp-fill { width: 100%; height: 100%; background: #f00; transition: 0.2s; }
+        #wave-info { position: absolute; top: 10px; right: 20px; text-align: right; font-size: 1.5em; color: #0af; }
+        #joystick { position: absolute; bottom: 50px; left: 50px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <h1 style="font-size: 3em; text-shadow: 0 0 20px #0f0;">NEON PROTOCOL: 25 WAVES</h1>
+    
+    <p>CIHAZ SEÇIMI:</p>
+    <div class="btn-group">
+        <button id="btn-pc" class="selected">PC & FARE</button>
+        <button id="btn-touch">DOKUNMATIK</button>
+    </div>
+
+    <p>HARITA SEÇIMI:</p>
+    <div class="btn-group">
+        <button id="m1" class="m-btn selected">LABİRENT</button>
+        <button id="m2" class="m-btn">AÇIK ALAN</button>
+        <button id="m3" class="m-btn">DAR KORIDORLAR</button>
+    </div>
+
+    <button id="start-btn" style="font-size: 2em; margin-top: 30px;">SISTEMI BAŞLAT</button>
+</div>
+
+<div id="ui">
+    <div id="hp-label">SİSTEM BÜTÜNLÜĞÜ (HP)</div>
+    <div class="stat-bar"><div id="hp-fill"></div></div>
+    <div>LEVEL: <span id="lvl-val">1</span> | KILLS: <span id="kill-val">0</span></div>
+</div>
+
+<div id="wave-info">
+    DALGA: <span id="wave-val">1</span>/25<br>
+    <small id="enemy-count">Düşmanlar: 0</small>
+</div>
+
+<div id="joystick"></div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let controlMode = 'pc'; // 'pc' veya 'touch'
+let mapType = 1;
+let gameActive = false;
+
+// --- HARİTA AYARLARI ---
+const TILE_SIZE = 80;
+const MAP_SIZE = 40;
+let FOV_RADIUS = 600; // Görüş alanı büyütüldü
+
+class Map {
+    constructor(type) {
+        this.data = [];
+        this.generate(type);
+    }
+    generate(type) {
+        let density = type === 1 ? 0.2 : (type === 2 ? 0.05 : 0.35);
+        for (let y = 0; y < MAP_SIZE; y++) {
+            this.data[y] = [];
+            for (let x = 0; x < MAP_SIZE; x++) {
+                let isEdge = (x === 0 || y === 0 || x === MAP_SIZE-1 || y === MAP_SIZE-1);
+                this.data[y][x] = (isEdge || Math.random() < density) ? 1 : 0;
+            }
+        }
+        // Spawn temizliği
+        for(let i=1; i<6; i++) for(let j=1; j<6; j++) this.data[i][j] = 0;
+    }
+    isWall(x, y) {
+        let tx = Math.floor(x/TILE_SIZE), ty = Math.floor(y/TILE_SIZE);
+        return (this.data[ty] && this.data[ty][tx] === 1);
+    }
+}
+
+// --- SES SİSTEMİ ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, duration, vol) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+// --- OYUN NESNELERİ ---
+class Player {
+    constructor() {
+        this.x = TILE_SIZE*1.5; this.y = TILE_SIZE*1.5;
+        this.hp = 100; this.maxHp = 100;
+        this.speed = 5; this.kills = 0;
+    }
+    draw() {
+        ctx.shadowBlur = 20; ctx.shadowColor = "#0f0";
+        ctx.fillStyle = "#0f0";
+        ctx.beginPath(); ctx.arc(this.x, this.y, 20, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Enemy {
+    constructor(x, y, isBoss = false) {
+        this.x = x; this.y = y;
+        this.isBoss = isBoss;
+        this.hp = isBoss ? 1500 : 100;
+        this.radius = isBoss ? 50 : 18;
+        this.speed = isBoss ? 2 : 2.5 + (Math.random());
+        this.color = isBoss ? "#f0f" : "#f00";
+    }
+    update(p, map) {
+        let dx = p.x - this.x, dy = p.y - this.y;
+        let d = Math.sqrt(dx*dx + dy*dy);
+        let vx = (dx/d)*this.speed, vy = (dy/d)*this.speed;
+        if(!map.isWall(this.x+vx, this.y)) this.x += vx;
+        if(!map.isWall(this.x, this.y+vy)) this.y += vy;
+        if(d < this.radius + 20) {
+            p.hp -= this.isBoss ? 2 : 0.5;
+            if(Math.random() < 0.1) playTone(100, 'sawtooth', 0.1, 0.05);
+        }
+    }
+    draw() {
+        ctx.shadowBlur = this.isBoss ? 30 : 10; ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class Bullet {
+    constructor(x, y, angle) {
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle)*15; this.vy = Math.sin(angle)*15;
+        this.active = true;
+    }
+    update(map) {
+        this.x += this.vx; this.y += this.vy;
+        if(map.isWall(this.x, this.y)) this.active = false;
+    }
+    draw() {
+        ctx.fillStyle = "#ff0";
+        ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+// --- OYUN DÖNGÜSÜ VE MANTIK ---
+let player, gameMap, enemies = [], bullets = [], wave = 1, keys = {};
+
+function startWave() {
+    enemies = [];
+    let count = 5 + (wave * 3);
+    let isBossWave = (wave % 5 === 0);
+    
+    if(isBossWave) {
+        enemies.push(new Enemy(MAP_SIZE*TILE_SIZE/2, MAP_SIZE*TILE_SIZE/2, true));
+        playTone(50, 'square', 1, 0.2);
+    }
+    
+    for(let i=0; i < (isBossWave ? 5 : count); i++) {
+        let rx, ry;
+        do { rx = Math.random()*MAP_SIZE*TILE_SIZE; ry = Math.random()*MAP_SIZE*TILE_SIZE; }
+        while(gameMap.isWall(rx, ry) || Math.sqrt((rx-player.x)**2 + (ry-player.y)**2) < 500);
+        enemies.push(new Enemy(rx, ry));
+    }
+    document.getElementById('wave-val').innerText = wave;
+}
+
+function update() {
+    if(!gameActive) return;
+
+    // Hareket
+    let mx = 0, my = 0;
+    if(keys['w']) my -= player.speed; if(keys['s']) my += player.speed;
+    if(keys['a']) mx -= player.speed; if(keys['d']) mx += player.speed;
+    if(!gameMap.isWall(player.x + mx, player.y)) player.x += mx;
+    if(!gameMap.isWall(player.x, player.y + my)) player.y += my;
+
+    // Mermiler
+    bullets.forEach((b, i) => {
+        b.update(gameMap);
+        enemies.forEach((en, ei) => {
+            if(Math.sqrt((b.x-en.x)**2 + (b.y-en.y)**2) < en.radius) {
+                en.hp -= 50; b.active = false;
+                if(en.hp <= 0) {
+                    enemies.splice(ei, 1); player.kills++;
+                    playTone(200, 'sine', 0.1, 0.05);
+                }
+            }
+        });
+        if(!b.active) bullets.splice(i, 1);
+    });
+
+    enemies.forEach(en => en.update(player, gameMap));
+
+    if(enemies.length === 0 && wave < 25) {
+        wave++; startWave();
+    }
+
+    if(player.hp <= 0) {
+        alert("SİSTEM ÇÖKTÜ! Dalga: " + wave);
+        location.reload();
+    }
+
+    document.getElementById('hp-fill').style.width = player.hp + "%";
+    document.getElementById('enemy-count').innerText = "Düşmanlar: " + enemies.length;
+}
+
+function draw() {
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(canvas.width/2 - player.x, canvas.height/2 - player.y);
+
+    // Harita çizimi
+    for(let y=0; y<MAP_SIZE; y++) {
+        for(let x=0; x<MAP_SIZE; x++) {
+            if(gameMap.data[y][x] === 1) {
+                ctx.fillStyle = "#001133"; ctx.strokeStyle = "#0af";
+                ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    }
+
+    bullets.forEach(b => b.draw());
+    enemies.forEach(en => en.draw());
+    player.draw();
+    ctx.restore();
+
+    // Görüş Alanı
+    let g = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 100, canvas.width/2, canvas.height/2, FOV_RADIUS);
+    g.addColorStop(0, "transparent"); g.addColorStop(1, "rgba(0,0,0,0.95)");
+    ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width, canvas.height);
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+// --- KONTROLLER ---
+window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
+window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+canvas.onmousedown = (e) => {
+    if(!gameActive) return;
+    let angle = Math.atan2(e.clientY - canvas.height/2, e.clientX - canvas.width/2);
+    bullets.push(new Bullet(player.x, player.y, angle));
+    playTone(400, 'square', 0.05, 0.1);
+};
+
+// Dokunmatik ateşleme
+canvas.ontouchstart = (e) => {
+    let t = e.touches[0];
+    let angle = Math.atan2(t.clientY - canvas.height/2, t.clientX - canvas.width/2);
+    bullets.push(new Bullet(player.x, player.y, angle));
+    playTone(400, 'square', 0.05, 0.1);
+};
+
+// --- MENU TETIKLEYICILERI ---
+document.querySelectorAll('.m-btn').forEach((b, i) => b.onclick = () => {
+    document.querySelectorAll('.m-btn').forEach(x => x.classList.remove('selected'));
+    b.classList.add('selected'); mapType = i+1;
+});
+document.getElementById('btn-pc').onclick = () => {
+    controlMode = 'pc'; document.getElementById('btn-pc').classList.add('selected');
+    document.getElementById('btn-touch').classList.remove('selected');
+};
+document.getElementById('btn-touch').onclick = () => {
+    controlMode = 'touch'; document.getElementById('btn-touch').classList.add('selected');
+    document.getElementById('btn-pc').classList.remove('selected');
+};
+
+document.getElementById('start-btn').onclick = () => {
+    document.getElementById('overlay').style.display = 'none';
+    player = new Player();
+    gameMap = new Map(mapType);
+    gameActive = true;
+    startWave();
+    loop();
+};
+</script>
+</body>
+</html>
