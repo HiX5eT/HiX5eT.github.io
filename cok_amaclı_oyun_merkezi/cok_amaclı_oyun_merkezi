@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Süper Araçlar ve Oyunlar Merkezi (24 İşlevli - Nihai Sürüm)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        /* ========================================================== */
+        /* MINECRAFT TEMALI ARKA PLAN STİLLERİ */
+        /* ========================================================== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            
+            /* MINECRAFT ÇİM BLOK TEMASI */
+            background-color: #554433; /* Toprak rengi */
+            background-image: linear-gradient(
+                to bottom,
+                #7ac943 0%,   /* Açık Yeşil - Çim Üstü */
+                #4e9929 70%,  /* Koyu Yeşil - Çim Altı */
+                #7e5b3c 70%,  /* Kahverengi - Toprak Üstü */
+                #554433 100%  /* Koyu Kahverengi - Toprak Altı */
+            );
+            background-size: 100% 50px; 
+            background-attachment: fixed; 
+        }
+        
+        /* ========================================================== */
+        /* GİRİŞ EKRANI (SPLASH SCREEN) STİLLERİ */
+        /* ========================================================== */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 62, 80, 0.95); 
+            color: white;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            cursor: pointer; 
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+        }
+
+        #splash-screen h1 {
+            font-size: 4em;
+            margin-bottom: 10px;
+            color: #f1c40f; 
+            text-shadow: 4px 4px 0 #34495e; 
+            animation: pulse 1.5s infinite alternate;
+        }
+        #splash-screen p {
+            font-size: 1.5em;
+            margin-top: 10px;
+            color: #ecf0f1;
+            font-style: italic;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 5px 15px;
+            border-radius: 5px;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+
+        /* GENEL VE KAPSAYICI STİLLER */
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            max-width: 1600px; 
+            width: 100%;
+        }
+        
+        /* Responsive Düzen */
+        @media (max-width: 1600px) {
+             .main-content { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 1200px) {
+            .main-content { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background-color: #ffffff; 
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); 
+            border-top: 5px solid; 
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel h1 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        .panel-content {
+            flex-grow: 1;
+        }
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            margin: 2px;
+        }
+        
+        /* Ortak Input Stili */
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        
+        /* Panel Renkleri */
+        .euclidean-panel { border-top-color: #007bff; }
+        .calculator-panel { border-top-color: #ffc107; }
+        .game-panel { border-top-color: #17a2b8; }
+        .guess-panel { border-top-color: #6c757d; }
+        .dice-panel { border-top-color: #20c997; }
+        .rps-panel { border-top-color: #fd7e14; }
+        .color-panel { border-top-color: #e83e8c; }
+        .chrono-panel { border-top-color: #00cccc; }
+        .minecraft-panel { border-top-color: #4CAF50; } 
+        .clicker-panel { border-top-color: #ff5722; } 
+        .notepad-panel { border-top-color: #3f51b5; } 
+        .three-d-panel { border-top-color: #673AB7; } 
+        .snake-panel { border-top-color: #e91e63; } 
+        .memory-panel { border-top-color: #00bcd4; }
+        .colorblind-panel { border-top-color: #8bc34a; }
+        .todo-panel { border-top-color: #ff9800; } 
+        .password-panel { border-top-color: #607d8b; }
+        .maze-panel { border-top-color: #9c27b0; } 
+        .reaction-panel { border-top-color: #f39c12; }
+        .stroop-panel { border-top-color: #34495e; }
+        .target-panel { border-top-color: #e74c3c; }
+
+        /* YENİ EKLENEN TR OYUN STİLLERİ */
+        .math-panel { border-top-color: #00bcd4; } 
+        .flag-panel { border-top-color: #dc3545; } 
+        .typing-panel { border-top-color: #9c27b0; } 
+        
+        /* HAFIZA OYUNU STİLLERİ */
+        #memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .card {
+            width: 100%;
+            height: 50px;
+            background-color: #ccc;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            color: transparent;
+            user-select: none;
+        }
+        .card.flipped {
+            background-color: #f8f8f8;
+            color: #333;
+        }
+        .card.matched {
+            background-color: #4CAF50 !important;
+            color: white !important;
+            pointer-events: none;
+        }
+
+        /* YILAN OYUNU STİLLERİ */
+        #snakeCanvas {
+            border: 5px solid #333;
+            background-color: #c0f4c0; 
+            border-radius: 4px;
+            margin-bottom: 10px;
+            touch-action: none; 
+        }
+        .snake-controls .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            width: 120px; 
+            margin-top: 10px;
+        }
+        .snake-controls .up-button { grid-column: 2 / 3; }
+        .snake-controls .left-button { grid-column: 1 / 2; }
+        .snake-controls .right-button { grid-column: 3 / 4; }
+        .snake-controls .down-button { grid-column: 2 / 3; }
+
+        /* Kaynak Sayısı Stilleri */
+        .resource-count {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        /* Hızlı Yazma Input Stili */
+        #typing-input {
+            resize: none; 
+            font-family: monospace; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="splash-screen" onclick="hideSplashAndStart()">
+        <h1>Süper Araçlar Merkezi</h1>
+        <p>[Herhangi Bir Yere Tıklayarak Geçebilirsiniz]</p>
+    </div>
+
+    <div class="main-content">
+        <div class="panel euclidean-panel">
+            <h1>Öklid Uzaklık Hesaplayıcı</h1>
+            <div class="panel-content">
+                <div class="input-group">
+                    <label for="nokta1">1. Koordinatlar (Örn: 10,20):</label>
+                    <input type="text" id="nokta1" placeholder="Virgülle ayrılmış değerler">
+                </div>
+                <div class="input-group">
+                    <label for="nokta2">2. Koordinatlar (Örn: 15,25):</label>
+                    <input type="text" id="nokta2" placeholder="Virgülle ayrılmış değerler">
+                </div>
+                <button class="euclidean-button" onclick="hesaplamayiBaslat()" style="background-color: #28a745; color: white; width: 100%;">Uzaklığı Hesapla</button>
+                <div id="sonuc" style="margin-top: 15px; padding: 10px; border: 2px solid #007bff; background-color: #e6f7ff; text-align: center;">Sonuç</div>
+            </div>
+        </div>
+
+        <div class="panel calculator-panel">
+            <h1>Basit Hesap Makinesi</h1>
+            <div class="panel-content">
+                <div class="calc-input"><input type="number" id="sayiA" placeholder="1. Sayı"></div>
+                <div class="calc-input"><input type="number" id="sayiB" placeholder="2. Sayı"></div>
+                <div class="calc-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 15px;">
+                    <button onclick="calcIslem('topla')" style="background-color: #007bff; color: white;">+</button>
+                    <button onclick="calcIslem('cikar')" style="background-color: #dc3545; color: white;">-</button>
+                    <button onclick="calcIslem('carp')" style="background-color: #6f42c1; color: white;">x</button>
+                    <button onclick="calcIslem('bol')" style="background-color: #fd7e14; color: white;">/</button>
+                </div>
+                <div id="calc-sonuc" style="margin-top: 15px; padding: 10px; border: 2px solid #ffc107; background-color: #fff8e6; text-align: center;">Sonuç</div>
+            </div>
+        </div>
+
+        <div class="panel game-panel">
+            <h1>Kelime Tahmin Oyunu</h1>
+            <div class="panel-content">
+                <div id="displayWord" style="font-size: 2em; letter-spacing: 0.3em; margin-bottom: 20px; font-weight: bold; text-align: center;"></div>
+                <div class="input-area" style="display: flex; margin-bottom: 10px;">
+                    <input type="text" id="letter-input" maxlength="1" placeholder="Harf" style="flex-grow: 1; border-radius: 5px 0 0 5px;">
+                    <button class="game-button" onclick="guessLetter()" style="background-color: #17a2b8; color: white; border-radius: 0 5px 5px 0;">Tahmin Et</button>
+                </div>
+                <div id="guessedLetters">
+                    Tahmin Edilenler: <span id="list-of-guesses" style="color: #dc3545; font-weight: bold;"></span>
+                    <p style="font-size: 0.9em; margin-top: 5px;">Kalan Deneme: <span id="tries-left">6</span></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel guess-panel">
+            <h1>Sayı Tahmin Oyunu</h1>
+            <div class="panel-content">
+                <p style="text-align: center; font-size: 0.9em;">(1-100 arası sayıyı tahmin et)</p>
+                <input type="number" id="number-guess-input" placeholder="Tahminini Gir">
+                <div id="guess-output" style="margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center;">Yeni oyun başladı! 1-100 arası bir sayı tahmin et.</div>
+                <button class="guess-button" onclick="checkNumberGuess()" style="background-color: #6c757d; color: white; width: 100%;">Tahmin Et</button>
+            </div>
+        </div>
+
+        <div class="panel snake-panel">
+            <h1>🐍 Yılan Oyunu (SNAKE)</h1>
+            <div class="panel-content" id="snake-game-container">
+                <canvas id="snakeCanvas" width="200" height="200"></canvas>
+                <div class="snake-controls">
+                    <p>Skor: <span id="snake-score">0</span></p>
+                    <button onclick="snakeInit()">Oyunu Başlat / Sıfırla</button>
+                    <div class="control-buttons">
+                        <button class="up-button" onclick="changeSnakeDirection(38)">↑</button>
+                        <div style="grid-column: 2 / 3;"></div>
+                        <button class="left-button" onclick="changeSnakeDirection(37)">←</button>
+                        <button class="down-button" onclick="changeSnakeDirection(40)">↓</button>
+                        <button class="right-button" onclick="changeSnakeDirection(39)">→</button>
+                    </div>
+                </div>
+                <p style="font-size: 0.8em; margin-top: 10px;">(Ok tuşları / Tıklama/Dokunma)</p>
+            </div>
+        </div>
+
+        <div class="panel rps-panel">
+            <h1>Taş-Kağıt-Makas</h1>
+            <div class="panel-content">
+                <div class="rps-buttons" style="text-align: center; margin-bottom: 15px;">
+                    <button onclick="playRPS('tas')">✊ Taş</button>
+                    <button onclick="playRPS('kagit')">✋ Kağıt</button>
+                    <button onclick="playRPS('makas')">✌️ Makas</button>
+                </div>
+                <div id="rps-result" style="text-align: center; padding: 10px; border: 1px dashed #fd7e14;">Seçiminizi yapın!</div>
+            </div>
+        </div>
+        
+        <div class="panel dice-panel">
+            <h1>Zar Atma Oyunu</h1>
+            <div class="panel-content">
+                <p style="text-align: center;">Zar atmak için butona tıkla.</p>
+                <div id="dice-result" style="font-size: 3em; margin: 10px 0; text-align: center; font-weight: bold; color: #20c997;">?</div>
+                <button class="dice-button" onclick="rollDice()" style="background-color: #20c997; color: white; width: 100%;">Zar At (1-6)</button>
+            </div>
+        </div>
+        
+        <div class="panel color-panel">
+            <h1>Renk Değiştirici</h1>
+            <div class="panel-content">
+                <p style="text-align: center;">Kutunun rengini rastgele değiştir.</p>
+                <div id="color-box" style="height: 50px; border-radius: 5px; margin-bottom: 15px; background-color: #ccc;"></div>
+                <button class="color-button" onclick="changeColor()" style="background-color: #e83e8c; color: white; width: 100%;">Rengi Değiştir</button>
+            </div>
+        </div>
+
+        <div class="panel chrono-panel">
+            <h1>Basit Kronometre</h1>
+            <div class="panel-content">
+                <div id="chrono-display" style="font-size: 2.5em; text-align: center; margin-bottom: 15px; font-weight: bold; color: #00cccc;">00:00.0</div>
+                <div class="chrono-controls" style="text-align: center;">
+                    <button class="start-button" onclick="startChrono()">Başlat</button>
+                    <button class="stop-button" onclick="stopChrono()">Durdur</button>
+                    <button class="reset-button" onclick="resetChrono()">Sıfırla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel minecraft-panel">
+            <h1>⛏️ Kaynak Toplama Merkezi</h1>
+            <div class="panel-content">
+                <p style="text-align: center; font-size: 0.9em; margin-bottom: 10px;">
+                    (%5 Creeper Riski!)
+                </p>
+                <div id="resource-stone" class="resource-count">Taş: <strong>0</strong></div>
+                <div id="resource-coal" class="resource-count">Kömür: <strong>0</strong></div>
+                <div id="resource-iron" class="resource-count">Demir: <strong>0</strong></div>
+                <div id="resource-gold" class="resource-count">Altın: <strong>0</strong></div>
+                <div id="resource-emerald" class="resource-count">Zümrüt: <strong>0</strong></div>
+                <div id="resource-diamond" class="resource-count">Elmas: <strong>0</strong></div>
+                <div id="resource-netherite" class="resource-count">Netherite: <strong>0</strong></div>
+                <div id="mine-status" class="status-message" style="margin: 10px 0; padding: 5px;">Kazmaya Başla!</div>
+                <button class="mine-button" onclick="mineResource()">Kazma Vur</button>
+            </div>
+        </div>
+        
+        <div class="panel clicker-panel">
+            <h1>🚀 Kripto Tıklama Oyunu</h1>
+            <div class="panel-content">
+                <div id="crypto-display" style="font-size: 2.5em; font-weight: bold; text-align: center; margin-bottom: 10px; color: #ff5722;">0 $CRYP</div>
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <span id="click-power-display">Tıklama Gücü: 1</span>
+                </div>
+                <button class="click-button" onclick="addCrypto()">💎 Kazma Vur!</button>
+                <button class="upgrade-button" id="upgrade-button" onclick="upgradeClick()">
+                    Yükselt (Maliyet: 10 $CRYP)
+                </button>
+            </div>
+        </div>
+
+        <div class="panel notepad-panel">
+            <h1>📝 Tarayıcı Not Defteri</h1>
+            <div class="panel-content">
+                <textarea id="note-text" placeholder="Notunuzu buraya yazın..."></textarea>
+                <button class="save-button" onclick="saveNote()">Notu Kaydet (Tarayıcıya)</button>
+            </div>
+        </div>
+        
+        <div class="panel three-d-panel">
+            <h1>🧊 Three.js 3D Küp</h1>
+            <div class="panel-content">
+                <p style="text-align: center; font-size: 0.9em;">(Hafif bir 3D animasyon demosu)</p>
+                <div id="threejs-container" style="height: 180px;">
+                    </div>
+            </div>
+        </div>
+        
+        <div class="panel memory-panel">
+            <h1>🧠 Hafıza Oyunu (4x4)</h1>
+            <div class="panel-content">
+                <div id="memory-grid"></div>
+                <p style="text-align: center;">Deneme: <span id="memory-tries">0</span></p>
+                <button onclick="initMemoryGame()" style="background-color: #00bcd4; color: white; width: 100%;">Oyunu Başlat / Sıfırla</button>
+            </div>
+        </div>
+
+        <div class="panel colorblind-panel">
+            <h1>🔴 Renk Körlüğü Testi</h1>
+            <div class="panel-content">
+                <div id="ishihara-circle" style="width: 100%; height: 80px; background-color: #f0f0f0; border-radius: 5px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; font-size: 2em; font-weight: bold; color: white;">?</div>
+                <input type="number" id="ishihara-input" placeholder="Gördüğünüz sayıyı girin">
+                <div id="ishihara-result" style="text-align: center; margin-bottom: 10px;">Sayısı bulun!</div>
+                <button onclick="checkIshihara()" style="background-color: #8bc34a; color: white;">Kontrol Et</button>
+                <button onclick="initIshihara()" style="background-color: #689f38; color: white;">Yeni Sayı</button>
+            </div>
+        </div>
+
+        <div class="panel todo-panel">
+            <h1>✅ Görev Yöneticisi (To-Do)</h1>
+            <div class="panel-content">
+                <input type="text" id="todo-input" placeholder="Yeni görev ekle...">
+                <button onclick="addTodo()" style="background-color: #ff9800; color: white; margin-bottom: 10px;">Ekle</button>
+                <ul id="todo-list" style="list-style-type: none; padding: 0;">
+                    </ul>
+            </div>
+        </div>
+
+        <div class="panel password-panel">
+            <h1>🔒 Parola Oluşturucu</h1>
+            <div class="panel-content">
+                <label for="password-length">Uzunluk (6-20):</label>
+                <input type="number" id="password-length" value="12" min="6" max="20" style="width: 50px; display: inline-block;">
+                <button onclick="generatePassword()" style="background-color: #607d8b; color: white;">Oluştur</button>
+                <div id="password-output" style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: center; word-wrap: break-word;">Parola burada görünecek</div>
+            </div>
+        </div>
+        
+        <div class="panel maze-panel">
+            <h1>🧩 Mini Labirent Oyunu</h1>
+            <div class="panel-content" style="text-align: center;">
+                <p>Hedefe ulaşmak için butona tıkla.</p>
+                <div id="maze-map" style="font-size: 2em; margin-bottom: 10px; font-weight: bold;">[Başlangıç]</div>
+                <div id="maze-status" style="min-height: 20px;"></div>
+                <button onclick="mazeMove()" id="maze-button" style="background-color: #9c27b0; color: white; width: 100%;">İlerlemek İçin Tıkla!</button>
+            </div>
+        </div>
+        
+        <div class="panel reaction-panel">
+            <h1>⏱️ Hızlı Tepki Testi</h1>
+            <div class="panel-content">
+                <div id="reaction-box" style="height: 100px; background-color: #f39c12; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.1em; color: white;">
+                    Hazır ol! (Tıklayınca Başlar)
+                </div>
+                <div id="reaction-result" style="text-align: center; font-size: 1.2em;">Sonuç: -- ms</div>
+            </div>
+        </div>
+
+        <div class="panel stroop-panel">
+            <h1>🧠 Renk Adı Tahmin Oyunu</h1>
+            <div class="panel-content" style="text-align: center;">
+                <p>Aşağıdaki kelimenin **YAZI** rengini seçin.</p>
+                <div id="color-word-display" style="font-size: 2.5em; font-weight: bold; margin-bottom: 15px;">MAVİ</div>
+                <div class="stroop-buttons">
+                    <button onclick="checkStroop('Kırmızı')" style="background-color: red; color: white;">Kırmızı</button>
+                    <button onclick="checkStroop('Mavi')" style="background-color: blue; color: white;">Mavi</button>
+                    <button onclick="checkStroop('Sarı')" style="background-color: yellow; color: black;">Sarı</button>
+                    <button onclick="checkStroop('Yeşil')" style="background-color: green; color: white;">Yeşil</button>
+                </div>
+                <div id="stroop-status" style="margin-top: 10px;">Skor: <strong id="stroop-score">0</strong></div>
+            </div>
+        </div>
+
+        <div class="panel target-panel">
+            <h1>🎯 Tıkla ve Yakala Oyunu</h1>
+            <div class="panel-content" style="position: relative; height: 160px; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; margin-bottom: 10px;">
+                <div id="target-area" style="width: 25px; height: 25px; background-color: #e74c3c; border-radius: 50%; position: absolute; cursor: pointer; display: none;" onclick="targetHit()"></div>
+            </div>
+            <div id="target-info" style="text-align: center;">Yakalanan: <strong id="target-count">0</strong> | Süre: <strong id="target-timer">10</strong>s</div>
+            <button onclick="startTargetGame()" style="background-color: #3498db; color: white; width: 100%;">Oyunu Başlat</button>
+        </div>
+
+        <div class="panel math-panel">
+            <h1>➕ Dört İşlem Çarkı</h1>
+            <div class="panel-content">
+                <div id="math-question" style="font-size: 2em; font-weight: bold; text-align: center; margin-bottom: 15px;">? + ? = ?</div>
+                <input type="number" id="math-answer" placeholder="Cevabınızı girin">
+                <div id="math-status" style="margin-bottom: 10px; text-align: center;">Skor: <strong id="math-score">0</strong></div>
+                <button onclick="checkMathAnswer()" style="background-color: #00bcd4; color: white; width: 100%;">Cevapla</button>
+            </div>
+        </div>
+
+        <div class="panel flag-panel">
+            <h1>🇹🇷 Hangi Bayrak? (Trivia)</h1>
+            <div class="panel-content" style="text-align: center;">
+                <div id="flag-display" style="font-size: 3em; margin-bottom: 10px;">❓</div>
+                <p>Hangi ülkenin bayrağıdır?</p>
+                <div id="flag-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                    </div>
+                <div id="flag-status" style="margin-top: 15px;">Skor: <strong id="flag-score">0</strong></div>
+            </div>
+        </div>
+
+        <div class="panel typing-panel">
+            <h1>⌨️ Hızlı Yazma Testi</h1>
+            <div class="panel-content">
+                <div id="typing-text-display" style="padding: 10px; border: 1px dashed #999; margin-bottom: 10px; min-height: 50px;">Cümle yükleniyor...</div>
+                <textarea id="typing-input" placeholder="Yazmaya başlayın..." rows="3"></textarea>
+                <div id="typing-info" style="margin-top: 5px;">Süre: <strong id="typing-time">0</strong>s | Hata: <strong id="typing-error">0</strong></div>
+                <button onclick="startTypingTest()" style="background-color: #9c27b0; color: white; width: 100%;">Testi Başlat</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================================
+        // UTILITY FONKSİYONLARI
+        // ==========================================================
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // ==========================================================
+        // 1. SPLASH SCREEN / BAŞLANGIÇ
+        // ==========================================================
+        function hideSplashAndStart() {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => { splash.style.visibility = 'hidden'; initAll(); }, 500);
+            splash.onclick = null;
+        }
+
+
+        // ==========================================================
+        // 2. ÖKLİD UZAKLIK HESAPLAYICI
+        // ==========================================================
+        function hesaplamayiBaslat() { 
+            const nokta1Str = document.getElementById('nokta1').value.split(',').map(s => parseFloat(s.trim()));
+            const nokta2Str = document.getElementById('nokta2').value.split(',').map(s => parseFloat(s.trim()));
+            const sonucDiv = document.getElementById('sonuc');
+
+            if (nokta1Str.length !== nokta2Str.length || nokta1Str.some(isNaN) || nokta2Str.some(isNaN)) {
+                sonucDiv.innerHTML = "Hata: Lütfen aynı sayıda, virgülle ayrılmış geçerli sayılar girin.";
+                return;
+            }
+
+            let sumOfSquares = 0;
+            for (let i = 0; i < nokta1Str.length; i++) {
+                sumOfSquares += Math.pow(nokta2Str[i] - nokta1Str[i], 2);
+            }
+            const distance = Math.sqrt(sumOfSquares);
+            sonucDiv.innerHTML = `Uzaklık: <strong>${distance.toFixed(4)}</strong>`;
+        }
+
+        // ==========================================================
+        // 3. BASİT HESAP MAKİNESİ
+        // ==========================================================
+        function calcIslem(islemTuru) { 
+            const a = parseFloat(document.getElementById('sayiA').value) || 0;
+            const b = parseFloat(document.getElementById('sayiB').value) || 0;
+            let result = 0;
+            
+            if (islemTuru === 'topla') result = a + b;
+            else if (islemTuru === 'cikar') result = a - b;
+            else if (islemTuru === 'carp') result = a * b;
+            else if (islemTuru === 'bol') result = a / b;
+
+            document.getElementById('calc-sonuc').innerHTML = `<strong>${result.toFixed(2)}</strong>`; 
+        }
+
+        // ==========================================================
+        // 4. KELİME TAHMİN OYUNU
+        // ==========================================================
+        const words = ["JAVASCRIPT", "PYTHON", "HTML", "CSS", "GOLANG", "RUST", "KOTLIN"];
+        let selectedWord = "";
+        let displayWord = [];
+        let guessedLetters = [];
+        let triesLeft = 6;
+
+        function selectRandomWord() {
+            selectedWord = words[Math.floor(Math.random() * words.length)];
+            displayWord = Array(selectedWord.length).fill('_');
+            guessedLetters = [];
+            triesLeft = 6;
+            document.getElementById('tries-left').textContent = triesLeft;
+            document.getElementById('list-of-guesses').textContent = '';
+        }
+
+        function updateDisplay() {
+            document.getElementById('displayWord').textContent = displayWord.join(' ');
+        }
+
+        function guessLetter() {
+            const inputElement = document.getElementById('letter-input');
+            const letter = inputElement.value.toUpperCase();
+            inputElement.value = '';
+
+            if (letter.length !== 1 || !/^[A-Z]$/.test(letter) || guessedLetters.includes(letter)) {
+                return;
+            }
+
+            guessedLetters.push(letter);
+            document.getElementById('list-of-guesses').textContent = guessedLetters.join(', ');
+
+            if (selectedWord.includes(letter)) {
+                for (let i = 0; i < selectedWord.length; i++) {
+                    if (selectedWord[i] === letter) {
+                        displayWord[i] = letter;
+                    }
+                }
+            } else {
+                triesLeft--;
+                document.getElementById('tries-left').textContent = triesLeft;
+            }
+
+            updateDisplay();
+
+            if (!displayWord.includes('_')) {
+                alert(`Tebrikler! Kelimeyi buldunuz: ${selectedWord}`);
+                initializeGame();
+            } else if (triesLeft === 0) {
+                alert(`Oyun Bitti! Kelime şuydu: ${selectedWord}`);
+                initializeGame();
+            }
+        }
+        function initializeGame() { selectRandomWord(); updateDisplay(); }
+
+
+        // ==========================================================
+        // 5. SAYI TAHMİN OYUNU
+        // ==========================================================
+        let targetNumber;
+        let attempts;
+
+        function initNumberGame() { 
+            targetNumber = Math.floor(Math.random() * 100) + 1; 
+            attempts = 0; 
+            document.getElementById('guess-output').innerHTML = `Yeni oyun başladı! 1-100 arası bir sayı tahmin et.`; 
+            document.getElementById('number-guess-input').value = '';
+        }
+
+        function checkNumberGuess() {
+            const guessInput = document.getElementById('number-guess-input');
+            const guess = parseInt(guessInput.value);
+            const outputDiv = document.getElementById('guess-output');
+
+            if (isNaN(guess) || guess < 1 || guess > 100) {
+                outputDiv.textContent = 'Lütfen 1-100 arasında geçerli bir sayı girin.';
+                return;
+            }
+
+            attempts++;
+
+            if (guess === targetNumber) {
+                outputDiv.innerHTML = `🎉 Tebrikler! Sayıyı ${attempts} denemede buldunuz.`;
+                guessInput.value = '';
+                setTimeout(initNumberGame, 3000); // 3 saniye sonra yeni oyuna başla
+            } else if (guess < targetNumber) {
+                outputDiv.textContent = `Daha büyük bir sayı dene. (Deneme: ${attempts})`;
+            } else {
+                outputDiv.textContent = `Daha küçük bir sayı dene. (Deneme: ${attempts})`;
+            }
+        }
+
+
+        // ==========================================================
+        // 6. YILAN OYUNU (SNAKE)
+        // ==========================================================
+        let canvas, ctx, snake, food, dx, dy, score, gameLoopInterval;
+        const TILE_SIZE = 10;
+        const CANVAS_SIZE = 200; 
+        const LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40;
+
+        function snakeInit() {
+            canvas = document.getElementById('snakeCanvas');
+            ctx = canvas.getContext('2d');
+            
+            clearInterval(gameLoopInterval); 
+
+            snake = [{ x: 100, y: 100 }, { x: 90, y: 100 }];
+            dx = TILE_SIZE; 
+            dy = 0;
+            score = 0;
+            document.getElementById('snake-score').textContent = score;
+
+            createFood();
+            gameLoopInterval = setInterval(gameLoop, 150); 
+
+            document.removeEventListener('keydown', snakeHandleKeyDown);
+            document.addEventListener('keydown', snakeHandleKeyDown);
+        }
+
+        function createFood() {
+            food = {
+                x: Math.floor(Math.random() * (CANVAS_SIZE / TILE_SIZE)) * TILE_SIZE,
+                y: Math.floor(Math.random() * (CANVAS_SIZE / TILE_SIZE)) * TILE_SIZE
+            };
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === food.x && snake[i].y === food.y) {
+                    createFood();
+                    return;
+                }
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? '#4CAF50' : '#8BC34A'; 
+                ctx.fillRect(segment.x, segment.y, TILE_SIZE, TILE_SIZE);
+            });
+        }
+
+        function drawFood() {
+            ctx.fillStyle = '#f44336';
+            ctx.fillRect(food.x, food.y, TILE_SIZE, TILE_SIZE);
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head); 
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                document.getElementById('snake-score').textContent = score;
+                createFood(); 
+            } else {
+                snake.pop(); 
+            }
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+            const hitWall = head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE;
+
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true; 
+                }
+            }
+            return hitWall; 
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            drawFood();
+            moveSnake();
+            drawSnake();
+
+            if (checkCollision()) {
+                clearInterval(gameLoopInterval);
+                alert(`Oyun Bitti! Skorunuz: ${score}. Tekrar oynamak için başlat butonuna basın.`);
+                document.removeEventListener('keydown', snakeHandleKeyDown);
+            }
+        }
+        
+        function changeSnakeDirection(keyCode) {
+            const goingUp = dy === -TILE_SIZE;
+            const goingDown = dy === TILE_SIZE;
+            const goingRight = dx === TILE_SIZE;
+            const goingLeft = dx === -TILE_SIZE;
+
+            if (keyCode === LEFT && !goingRight) { dx = -TILE_SIZE; dy = 0; }
+            else if (keyCode === UP && !goingDown) { dx = 0; dy = -TILE_SIZE; }
+            else if (keyCode === RIGHT && !goingLeft) { dx = TILE_SIZE; dy = 0; }
+            else if (keyCode === DOWN && !goingUp) { dx = 0; dy = TILE_SIZE; }
+        }
+
+        function snakeHandleKeyDown(event) {
+            changeSnakeDirection(event.keyCode);
+        }
+
+
+        // ==========================================================
+        // 7. TAŞ-KAĞIT-MAKAS (RPS)
+        // ==========================================================
+        function getComputerChoice() { 
+            const choices = ['tas', 'kagit', 'makas']; 
+            return choices[Math.floor(Math.random() * 3)]; 
+        }
+
+        function playRPS(userChoice) { 
+            const computerChoice = getComputerChoice();
+            let resultText = '';
+
+            if (userChoice === computerChoice) {
+                resultText = `Berabere! İkiniz de ${userChoice} seçtiniz.`;
+            } else if (
+                (userChoice === 'tas' && computerChoice === 'makas') ||
+                (userChoice === 'kagit' && computerChoice === 'tas') ||
+                (userChoice === 'makas' && computerChoice === 'kagit')
+            ) {
+                resultText = `🎉 Kazandın! Sen: ${userChoice}, Bilgisayar: ${computerChoice}`;
+            } else {
+                resultText = `❌ Kaybettin! Sen: ${userChoice}, Bilgisayar: ${computerChoice}`;
+            }
+
+            document.getElementById('rps-result').textContent = resultText;
+        }
+
+        // ==========================================================
+        // 8. ZAR ATMA OYUNU
+        // ==========================================================
+        function rollDice() { 
+            document.getElementById('dice-result').textContent = Math.floor(Math.random() * 6) + 1; 
+        }
+
+        // ==========================================================
+        // 9. RENK DEĞİŞTİRİCİ
+        // ==========================================================
+        function changeColor() { 
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); 
+            document.getElementById('color-box').style.backgroundColor = randomColor; 
+        }
+
+        // ==========================================================
+        // 10. KRONOMETRE
+        // ==========================================================
+        let timerInterval;
+        let startTime;
+        let elapsedTime = 0;
+        let isRunning = false;
+
+        function updateChronoDisplay() { 
+            const now = new Date().getTime();
+            elapsedTime = isRunning ? now - startTime : elapsedTime;
+
+            const totalSeconds = elapsedTime / 1000;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            const milliseconds = Math.floor((elapsedTime % 1000) / 100); // Onluk hane
+
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds}`;
+            document.getElementById('chrono-display').textContent = display; 
+        }
+
+        function startChrono() { 
+            if (isRunning) return;
+            isRunning = true;
+            startTime = new Date().getTime() - elapsedTime;
+            timerInterval = setInterval(updateChronoDisplay, 100); 
+        }
+
+        function stopChrono() { 
+            clearInterval(timerInterval); 
+            isRunning = false; 
+        }
+
+        function resetChrono() { 
+            stopChrono(); 
+            elapsedTime = 0; 
+            document.getElementById('chrono-display').textContent = "00:00.0"; 
+        }
+
+
+        // ==========================================================
+        // 11. MINECRAFT KAYNAK TOPLAMA MERKEZİ
+        // ==========================================================
+        let resources = { stone: 0, coal: 0, iron: 0, gold: 0, emerald: 0, diamond: 0, netherite: 0 };
+        const resourceWeights = { 
+            stone: 50,    // %50  (En yaygın)
+            coal: 30,     // %30
+            iron: 10,     // %10
+            gold: 5,      // %5
+            emerald: 2,   // %2
+            diamond: 2,   // %2
+            netherite: 1  // %1   (En nadir)
+        }; 
+
+        function updateResourcesDisplay() {
+            document.getElementById('resource-stone').innerHTML = `Taş: <strong>${resources.stone}</strong>`;
+            document.getElementById('resource-coal').innerHTML = `Kömür: <strong>${resources.coal}</strong>`;
+            document.getElementById('resource-iron').innerHTML = `Demir: <strong>${resources.iron}</strong>`;
+            document.getElementById('resource-gold').innerHTML = `Altın: <strong>${resources.gold}</strong>`;
+            document.getElementById('resource-emerald').innerHTML = `Zümrüt: <strong>${resources.emerald}</strong>`;
+            document.getElementById('resource-diamond').innerHTML = `Elmas: <strong>${resources.diamond}</strong>`;
+            document.getElementById('resource-netherite').innerHTML = `Netherite: <strong>${resources.netherite}</strong>`;
+        }
+
+        function mineResource() {
+            const statusDiv = document.getElementById('mine-status');
+
+            // %5 Creeper Riski!
+            if (Math.random() < 0.05) {
+                statusDiv.textContent = "💥 CREEPER! Tüm kaynakları kaybettin!";
+                statusDiv.style.backgroundColor = '#f44336'; 
+                statusDiv.style.color = 'white';
+                resources = { stone: 0, coal: 0, iron: 0, gold: 0, emerald: 0, diamond: 0, netherite: 0 };
+                updateResourcesDisplay();
+                return;
+            }
+
+            // Rastgele kaynak düşürme mekaniği
+            let totalWeight = 0;
+            for (const key in resourceWeights) {
+                totalWeight += resourceWeights[key];
+            }
+
+            let randomNum = Math.random() * totalWeight;
+            let foundResource = null;
+
+            for (const key in resourceWeights) {
+                if (randomNum < resourceWeights[key]) {
+                    foundResource = key;
+                    break;
+                }
+                randomNum -= resourceWeights[key];
+            }
+            
+            if (foundResource) {
+                resources[foundResource]++;
+                updateResourcesDisplay();
+                
+                let bgColor = '#e6ffed'; 
+                let resourceName = foundResource.toUpperCase();
+                statusDiv.style.color = 'black'; 
+                statusDiv.style.fontWeight = 'normal';
+
+
+                if (foundResource === 'gold') {
+                    bgColor = '#ffef96'; 
+                } else if (foundResource === 'emerald') {
+                    bgColor = '#4CAF50'; 
+                    statusDiv.style.color = 'white';
+                } else if (foundResource === 'diamond') {
+                    bgColor = '#a0d9ff'; 
+                    statusDiv.style.fontWeight = 'bold';
+                } else if (foundResource === 'netherite') {
+                    bgColor = '#2c3e50'; 
+                    statusDiv.style.color = '#f1c40f'; 
+                    statusDiv.style.fontWeight = 'bold';
+                    resourceName = "✨ NETHERITE CEVHERİ! ✨";
+                } 
+
+
+                statusDiv.textContent = `✅ Kazdın! 1 adet ${resourceName} buldun.`;
+                statusDiv.style.backgroundColor = bgColor; 
+
+            } else {
+                 statusDiv.textContent = `Yere bakmaktan başka bir şey bulamadın.`;
+                 statusDiv.style.backgroundColor = '#fff8e6';
+                 statusDiv.style.color = 'black';
+                 statusDiv.style.fontWeight = 'normal';
+            }
+        }
+
+
+        // ==========================================================
+        // 12. KRİPTO TIKLAMA OYUNU (CLICKER)
+        // ==========================================================
+        let cryptoCount = 0, clickPower = 1; 
+
+        function updateClickerDisplay() { 
+            document.getElementById('crypto-display').textContent = `${cryptoCount} $CRYP`;
+            document.getElementById('click-power-display').textContent = `Tıklama Gücü: ${clickPower}`;
+            
+            const upgradeButton = document.getElementById('upgrade-button');
+            const cost = clickPower * 10;
+            upgradeButton.textContent = `Yükselt (Maliyet: ${cost} $CRYP)`;
+            upgradeButton.disabled = cryptoCount < cost;
+        }
+
+        function addCrypto() { 
+            cryptoCount += clickPower; 
+            updateClickerDisplay(); 
+        }
+
+        function upgradeClick() { 
+            const cost = clickPower * 10;
+            if (cryptoCount >= cost) {
+                cryptoCount -= cost;
+                clickPower++;
+                updateClickerDisplay();
+            }
+        }
+
+
+        // ==========================================================
+        // 13. TARAYICI NOT DEFTERİ
+        // ==========================================================
+        function loadNote() { 
+            document.getElementById('note-text').value = localStorage.getItem("mySuperToolNote") || ""; 
+        }
+        function saveNote() { 
+            localStorage.setItem("mySuperToolNote", document.getElementById('note-text').value); 
+            alert("Not kaydedildi!"); 
+        }
+
+
+        // ==========================================================
+        // 14. THREE.JS 3D KÜP
+        // ==========================================================
+        let threejsInitialized = false;
+
+        function initThreeJS() { 
+            if (threejsInitialized) return;
+            threejsInitialized = true;
+            
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = 180; // Panel yüksekliği
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshPhongMaterial({ color: 0x4CAF50 }); // Minecraft yeşili
+            const cube = new THREE.Mesh(geometry, material);
+            scene.add(cube);
+
+            camera.position.z = 3;
+
+            // Işık ekle
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 1).normalize();
+            scene.add(light);
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                const newWidth = container.clientWidth;
+                const newHeight = 180;
+                renderer.setSize(newWidth, newHeight);
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+            });
+        }
+
+
+        // ==========================================================
+        // 15. HAFIZA OYUNU (MEMORY MATCH)
+        // ==========================================================
+        const memorySymbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let memoryTries = 0;
+        let isProcessing = false;
+
+        function initMemoryGame() {
+            const grid = document.getElementById('memory-grid');
+            grid.innerHTML = '';
+            
+            memoryCards = [...memorySymbols, ...memorySymbols];
+            shuffleArray(memoryCards);
+            
+            flippedCards = [];
+            matchedPairs = 0;
+            memoryTries = 0;
+            document.getElementById('memory-tries').textContent = memoryTries;
+            isProcessing = false;
+
+            memoryCards.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.symbol = symbol;
+                card.dataset.index = index;
+                card.textContent = symbol;
+                card.onclick = () => handleCardClick(card);
+                grid.appendChild(card);
+            });
+        }
+
+        function handleCardClick(card) {
+            if (isProcessing || card.classList.contains('flipped') || card.classList.contains('matched')) {
+                return;
+            }
+
+            card.classList.add('flipped');
+            card.style.color = '#333';
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                isProcessing = true;
+                memoryTries++;
+                document.getElementById('memory-tries').textContent = memoryTries;
+                
+                const [card1, card2] = flippedCards;
+
+                if (card1.dataset.symbol === card2.dataset.symbol) {
+                    // Eşleşti
+                    setTimeout(() => {
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        matchedPairs++;
+                        flippedCards = [];
+                        isProcessing = false;
+
+                        if (matchedPairs === memorySymbols.length) {
+                            alert(`TEBRİKLER! Oyunu ${memoryTries} denemede bitirdiniz!`);
+                        }
+                    }, 500);
+                } else {
+                    // Eşleşmedi
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        card1.style.color = 'transparent';
+                        card2.style.color = 'transparent';
+                        flippedCards = [];
+                        isProcessing = false;
+                    }, 1000);
+                }
+            }
+        }
+
+
+        // ==========================================================
+        // 16. RENK KÖRLÜĞÜ TESTİ (ISHIHARA BENZERİ)
+        // ==========================================================
+        let ishiharaNumber;
+
+        function generateIshiharaPattern(number) {
+            const circle = document.getElementById('ishihara-circle');
+            circle.textContent = '';
+            circle.style.backgroundColor = '#f0f0f0';
+            circle.innerHTML = number; 
+
+            const bgStart = `rgb(${Math.floor(Math.random() * 50) + 100}, 150, 100)`;
+            const bgEnd = `rgb(${Math.floor(Math.random() * 50) + 150}, 150, 100)`;
+            circle.style.backgroundImage = `linear-gradient(45deg, ${bgStart}, ${bgEnd})`;
+
+            const numberColor = `rgb(${Math.floor(Math.random() * 50) + 200}, 150, 100)`;
+            
+            setTimeout(() => {
+                 circle.style.color = numberColor; 
+                 circle.style.textShadow = '1px 1px 2px rgba(0,0,0,0.3)';
+            }, 100); 
+        }
+
+        function initIshihara() {
+            // 1 ile 99 arası rastgele bir sayı
+            ishiharaNumber = Math.floor(Math.random() * 98) + 1;
+            generateIshiharaPattern(ishiharaNumber);
+            document.getElementById('ishihara-result').textContent = 'Sayısı bulun!';
+            document.getElementById('ishihara-result').style.color = 'black';
+            document.getElementById('ishihara-input').value = '';
+        }
+
+        function checkIshihara() {
+            const guess = parseInt(document.getElementById('ishihara-input').value);
+            const resultDiv = document.getElementById('ishihara-result');
+
+            if (isNaN(guess)) {
+                resultDiv.textContent = 'Lütfen bir sayı girin.';
+                resultDiv.style.color = 'red';
+                return;
+            }
+
+            document.getElementById('ishihara-circle').style.color = 'black';
+
+
+            if (guess === ishiharaNumber) {
+                resultDiv.textContent = `✅ Doğru! Sayı ${ishiharaNumber} idi.`;
+                resultDiv.style.color = 'green';
+            } else {
+                resultDiv.textContent = `❌ Yanlış! Tahminin: ${guess}. Sayı ${ishiharaNumber} idi.`;
+                resultDiv.style.color = 'red';
+            }
+        }
+
+
+        // ==========================================================
+        // 17. GÖREV YÖNETİCİSİ (TO-DO)
+        // ==========================================================
+        function loadTodos() {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = '';
+            const todos = JSON.parse(localStorage.getItem('mySuperToolTodos') || '[]');
+            
+            todos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.style.padding = '5px 0';
+                li.style.borderBottom = '1px dotted #eee';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+                
+                const span = document.createElement('span');
+                span.textContent = todo;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Sil';
+                deleteButton.style.backgroundColor = '#dc3545';
+                deleteButton.style.color = 'white';
+                deleteButton.style.padding = '3px 8px';
+                deleteButton.onclick = () => deleteTodo(index);
+                
+                li.appendChild(span);
+                li.appendChild(deleteButton);
+                list.appendChild(li);
+            });
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            const task = input.value.trim();
+            
+            if (task === "") return;
+
+            const todos = JSON.parse(localStorage.getItem('mySuperToolTodos') || '[]');
+            todos.push(task);
+            localStorage.setItem('mySuperToolTodos', JSON.stringify(todos));
+            input.value = '';
+            loadTodos();
+        }
+
+        function deleteTodo(index) {
+            const todos = JSON.parse(localStorage.getItem('mySuperToolTodos'));
+            todos.splice(index, 1);
+            localStorage.setItem('mySuperToolTodos', JSON.stringify(todos));
+            loadTodos();
+        }
+
+
+        // ==========================================================
+        // 18. PAROLA OLUŞTURUCU
+        // ==========================================================
+        function generatePassword() {
+            const length = parseInt(document.getElementById('password-length').value);
+            const outputDiv = document.getElementById('password-output');
+
+            if (length < 6 || length > 20 || isNaN(length)) {
+                outputDiv.textContent = 'Hata: Uzunluk 6 ile 20 arasında olmalıdır.';
+                outputDiv.style.color = 'red';
+                return;
+            }
+            
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+            let password = "";
+            
+            // En az 1 büyük, 1 küçük, 1 sayı, 1 sembol garantisi
+            password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(Math.random() * 26));
+            password += "abcdefghijklmnopqrstuvwxyz".charAt(Math.floor(Math.random() * 26));
+            password += "0123456789".charAt(Math.floor(Math.random() * 10));
+            password += "!@#$%^&*()_+".charAt(Math.floor(Math.random() * 12));
+
+            // Kalan uzunluğu tamamla
+            for (let i = password.length; i < length; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            // Karakterleri karıştır
+            password = password.split('').sort(() => 0.5 - Math.random()).join('');
+            
+            outputDiv.textContent = password;
+            outputDiv.style.color = 'green';
+        }
+
+
+        // ==========================================================
+        // 19. MİNİ LABİRENT OYUNU
+        // ==========================================================
+        let mazePosition = 0;
+        const mazeSteps = [
+            "Başlangıç: Odaklan!",
+            "1. Adım: Önünde 2 Kapı var. Doğru olanı seç!",
+            "2. Adım: Bir canavar uyuyor. Sessiz ol!",
+            "3. Adım: Bir tuzak kapandı. Kaç!",
+            "4. Adım: Parlak bir hazine gördün!",
+            "5. Adım: Son Kapı! Yavaşça aç.",
+            "BİTİŞ: Hedefe ulaştın! 🎉"
+        ];
+
+        function initMazeGame() {
+            mazePosition = 0;
+            document.getElementById('maze-map').textContent = "[Başlangıç]";
+            document.getElementById('maze-status').textContent = mazeSteps[0];
+            document.getElementById('maze-button').textContent = "İlerlemek İçin Tıkla!";
+            document.getElementById('maze-button').disabled = false;
+        }
+
+        function mazeMove() {
+            if (mazePosition >= mazeSteps.length - 1) {
+                return; 
+            }
+            
+            // %20 şansla hata yap ve başa dön
+            if (Math.random() < 0.2) {
+                document.getElementById('maze-map').textContent = "❌ Hata! Başa döndün.";
+                document.getElementById('maze-status').textContent = "Dikkat etmedin! Tekrar dene.";
+                mazePosition = 0;
+                return;
+            }
+
+            mazePosition++;
+            document.getElementById('maze-map').textContent = mazeSteps[mazePosition].split(':')[0];
+            document.getElementById('maze-status').textContent = mazeSteps[mazePosition];
+
+            if (mazePosition === mazeSteps.length - 1) {
+                document.getElementById('maze-button').textContent = "Bitti!";
+                document.getElementById('maze-button').disabled = true;
+                setTimeout(initMazeGame, 3000); 
+            }
+        }
+
+
+        // ==========================================================
+        // 20. HIZLI TEPKİ TESTİ (REACTION TEST)
+        // ==========================================================
+        let reactionTimer, reactionStartTime, isReactionWaiting = false;
+
+        function reactionStart() {
+            const box = document.getElementById('reaction-box');
+            const result = document.getElementById('reaction-result');
+
+            if (isReactionWaiting) {
+                // Tıklama çok erken
+                clearTimeout(reactionTimer);
+                box.style.backgroundColor = '#e74c3c'; // Kırmızı
+                box.textContent = '❌ ÇOK ERKEN! Tekrar tıkla.';
+                isReactionWaiting = false;
+                result.textContent = 'Sonuç: -- ms';
+                return;
+            }
+
+            if (box.style.backgroundColor === 'rgb(76, 175, 80)') {
+                // Tıklama doğru zamanda
+                const endTime = new Date().getTime();
+                const reactionTime = endTime - reactionStartTime;
+                box.style.backgroundColor = '#3498db'; // Mavi
+                box.textContent = 'TEBRİKLER!';
+                result.textContent = `Sonuç: ${reactionTime} ms`;
+                return;
+            }
+
+            // Başlangıç durumu (Turuncu)
+            box.style.backgroundColor = '#f39c12';
+            box.textContent = 'Bekle...';
+            result.textContent = 'Sonuç: -- ms';
+            isReactionWaiting = true;
+
+            // Rastgele süre sonra yeşil yap
+            const waitTime = Math.random() * 3000 + 1000; // 1 ile 4 saniye arası
+            reactionTimer = setTimeout(() => {
+                box.style.backgroundColor = '#4CAF50'; // Yeşil
+                box.textContent = 'ŞİMDİ TIKLA!';
+                reactionStartTime = new Date().getTime();
+                isReactionWaiting = false;
+            }, waitTime);
+        }
+        document.getElementById('reaction-box').onclick = reactionStart;
+
+
+        // ==========================================================
+        // 21. RENK ADI TAHMİN OYUNU (STROOP TESTİ)
+        // ==========================================================
+        const colorWords = ['Kırmızı', 'Mavi', 'Sarı', 'Yeşil'];
+        const colorHex = ['red', 'blue', 'yellow', 'green'];
+        let correctStroopAnswer = "";
+        let stroopScore = 0;
+
+        function nextStroopQuestion() {
+            const display = document.getElementById('color-word-display');
+            
+            const wordIndex = Math.floor(Math.random() * 4);
+            const colorIndex = Math.floor(Math.random() * 4);
+            
+            // Doğru cevap: Kelimenin kendisi (örn: "MAVİ" yazıyorsa cevap Mavi)
+            correctStroopAnswer = colorWords[wordIndex];
+            
+            // Kelimeyi ekrana yaz (örn: MAVİ)
+            display.textContent = colorWords[wordIndex].toUpperCase();
+            // Kelimenin rengini ayarla (örn: Kırmızı)
+            display.style.color = colorHex[colorIndex];
+
+            // Skoru güncelle
+            document.getElementById('stroop-score').textContent = stroopScore;
+        }
+
+        function checkStroop(guess) {
+            const statusDiv = document.getElementById('stroop-status');
+
+            if (guess === correctStroopAnswer) {
+                stroopScore++;
+                statusDiv.innerHTML = `✅ **DOĞRU!** Skor: <strong style="color: green" id="stroop-score">${stroopScore}</strong>`;
+            } else {
+                stroopScore = 0; // Hata yapınca skor sıfırlanır
+                statusDiv.innerHTML = `❌ **YANLIŞ!** Cevap "${correctStroopAnswer}" idi. Skor Sıfırlandı.`;
+            }
+            // Kısa bir gecikme sonrası yeni soru
+            setTimeout(nextStroopQuestion, 500);
+        }
+
+        
+        // ==========================================================
+        // 22. TIKLA VE YAKALA (CATCH THE TARGET)
+        // ==========================================================
+        let targetCount = 0;
+        let targetInterval, targetTimerInterval;
+        let targetRemainingTime = 10;
+        const targetElement = document.getElementById('target-area');
+
+        function startTargetGame() {
+            targetCount = 0;
+            targetRemainingTime = 10;
+            document.getElementById('target-count').textContent = targetCount;
+            document.getElementById('target-timer').textContent = targetRemainingTime;
+            document.getElementById('target-info').textContent = `Yakalanan: ${targetCount} | Süre: ${targetRemainingTime}s`;
+
+            clearInterval(targetInterval);
+            clearInterval(targetTimerInterval);
+
+            // Hedefi rastgele konumda göster
+            targetInterval = setInterval(moveTarget, 1000); 
+
+            // Geri sayım sayacı
+            targetTimerInterval = setInterval(updateTargetTimer, 1000);
+            
+            targetElement.style.display = 'block'; // Hedefi görünür yap
+            moveTarget();
+        }
+
+        function moveTarget() {
+            const container = document.querySelector('.target-panel .panel-content');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            const targetSize = 25; // CSS'te ayarlanan boyut
+
+            const maxX = containerWidth - targetSize;
+            const maxY = containerHeight - targetSize;
+            
+            // Rastgele pozisyon hesaplama
+            const randomX = Math.floor(Math.random() * maxX);
+            const randomY = Math.floor(Math.random() * maxY);
+
+            targetElement.style.left = `${randomX}px`;
+            targetElement.style.top = `${randomY}px`;
+        }
+        
+        function targetHit() {
+            targetCount++;
+            document.getElementById('target-count').textContent = targetCount;
+            document.getElementById('target-info').textContent = `Yakalanan: ${targetCount} | Süre: ${targetRemainingTime}s`;
+            moveTarget(); // Vurulduktan sonra hemen yeni konuma taşı
+        }
+
+        function updateTargetTimer() {
+            targetRemainingTime--;
+            document.getElementById('target-timer').textContent = targetRemainingTime;
+            document.getElementById('target-info').textContent = `Yakalanan: ${targetCount} | Süre: ${targetRemainingTime}s`;
+
+
+            if (targetRemainingTime <= 0) {
+                clearInterval(targetInterval);
+                clearInterval(targetTimerInterval);
+                targetElement.style.display = 'none';
+                alert(`Süre doldu! Final Skorunuz: ${targetCount}`);
+                document.getElementById('target-info').innerHTML = `Oyun Bitti! Final Skor: <strong>${targetCount}</strong>`;
+            }
+        }
+
+
+        // ==========================================================
+        // 23. DÖRT İŞLEM ÇARKI
+        // ==========================================================
+        let mathAnswer, mathScore = 0;
+
+        function nextMathQuestion() {
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            const operation = ['+', '-', '*', '/'][Math.floor(Math.random() * 4)];
+            let result;
+            let questionText;
+
+            // Bölme işlemlerinin tam sayı çıkmasını sağla
+            if (operation === '/') {
+                result = num1 * num2;
+                questionText = `${result} / ${num2} = ?`;
+                mathAnswer = num1;
+            } else {
+                if (operation === '+') {
+                    result = num1 + num2;
+                } else if (operation === '-') {
+                    // Negatif sonuçları önlemek için büyük sayıdan küçüğü çıkar
+                    const a = Math.max(num1, num2);
+                    const b = Math.min(num1, num2);
+                    result = a - b;
+                    questionText = `${a} - ${b} = ?`;
+                } else if (operation === '*') {
+                    result = num1 * num2;
+                }
+                mathAnswer = result;
+                if (operation !== '-') questionText = `${num1} ${operation} ${num2} = ?`;
+            }
+
+            document.getElementById('math-question').textContent = questionText;
+            document.getElementById('math-answer').value = '';
+            document.getElementById('math-status').innerHTML = `Skor: <strong id="math-score">${mathScore}</strong>`;
+        }
+
+        function checkMathAnswer() {
+            const userAnswer = parseInt(document.getElementById('math-answer').value);
+            const statusDiv = document.getElementById('math-status');
+
+            if (isNaN(userAnswer)) {
+                statusDiv.textContent = "Lütfen bir sayı girin.";
+                return;
+            }
+
+            if (userAnswer === mathAnswer) {
+                mathScore++;
+                statusDiv.innerHTML = `✅ **DOĞRU!** Skor: <strong style="color: green">${mathScore}</strong>`;
+            } else {
+                mathScore = 0;
+                statusDiv.innerHTML = `❌ **YANLIŞ!** Cevap ${mathAnswer} idi. Skor Sıfırlandı.`;
+            }
+
+            setTimeout(nextMathQuestion, 1000);
+        }
+
+        // ==========================================================
+        // 24. HANGİ BAYRAK? (TRIVIA) - GÜNCELLENMİŞ 15 BAYRAK
+        // ==========================================================
+        const flagData = [
+            { flag: '🇹🇷', country: 'Türkiye' },
+            { flag: '🇬🇷', country: 'Yunanistan' },
+            { flag: '🇦🇿', country: 'Azerbaycan' },
+            { flag: '🇧🇬', country: 'Bulgaristan' },
+            { flag: '🇮🇷', country: 'İran' },
+            { flag: '🇷🇴', country: 'Romanya' },
+            { flag: '🇩🇪', country: 'Almanya' },
+            { flag: '🇫🇷', country: 'Fransa' },
+            { flag: '🇮🇹', country: 'İtalya' },
+            { flag: '🇪🇸', country: 'İspanya' },
+            { flag: '🇺🇸', country: 'Amerika' },
+            { flag: '🇨🇳', country: 'Çin' },
+            { flag: '🇯🇵', country: 'Japonya' },
+            { flag: '🇰🇷', country: 'Güney Kore' },
+            { flag: '🇨🇦', country: 'Kanada' }
+        ];
+        let correctFlagCountry = "";
+        let flagScore = 0;
+
+        function nextFlagQuestion() {
+            const correctIndex = Math.floor(Math.random() * flagData.length);
+            const correctFlag = flagData[correctIndex];
+            correctFlagCountry = correctFlag.country;
+
+            document.getElementById('flag-display').textContent = correctFlag.flag;
+            document.getElementById('flag-score').textContent = flagScore;
+            
+            // 4 rastgele seçenek oluştur
+            let options = [correctFlagCountry];
+            const allCountries = flagData.map(d => d.country);
+
+            while (options.length < 4) {
+                const randomCountry = allCountries[Math.floor(Math.random() * allCountries.length)];
+                if (!options.includes(randomCountry)) {
+                    options.push(randomCountry);
+                }
+            }
+            shuffleArray(options); 
+
+            const optionsDiv = document.getElementById('flag-options');
+            optionsDiv.innerHTML = '';
+
+            options.forEach(country => {
+                const btn = document.createElement('button');
+                btn.textContent = country;
+                btn.style.backgroundColor = '#dc3545';
+                btn.style.color = 'white';
+                btn.onclick = () => checkFlagAnswer(country);
+                optionsDiv.appendChild(btn);
+            });
+
+            document.getElementById('flag-status').innerHTML = `Skor: <strong id="flag-score">${flagScore}</strong>`;
+        }
+
+        function checkFlagAnswer(guess) {
+            const statusDiv = document.getElementById('flag-status');
+            
+            if (guess === correctFlagCountry) {
+                flagScore++;
+                statusDiv.innerHTML = `🎉 **DOĞRU!** Skor: <strong style="color: green">${flagScore}</strong>`;
+            } else {
+                flagScore = 0;
+                statusDiv.innerHTML = `❌ **YANLIŞ!** Doğru cevap: ${correctFlagCountry}. Skor Sıfırlandı.`;
+            }
+
+            document.querySelectorAll('#flag-options button').forEach(btn => btn.disabled = true);
+            
+            setTimeout(() => {
+                nextFlagQuestion();
+                document.querySelectorAll('#flag-options button').forEach(btn => btn.disabled = false);
+            }, 1500);
+        }
+
+        // ==========================================================
+        // 25. HIZLI YAZMA TESTİ
+        // ==========================================================
+        const turkishSentences = [
+            "Hızlı kahverengi tilki tembel köpeğin üzerinden atladı.",
+            "Yağız şoför çabucak otobüsü durdurdu.",
+            "Güneş doğarken, kuşlar şarkı söylemeye başladı.",
+            "Bilgisayar başında çok vakit geçirmek gözleri yorar.",
+            "Herkesin hayatta bir amacı olmalı.",
+            "Türk kahvesinin tadı eşsizdir."
+        ];
+        let typingInterval;
+        let typingStartTime;
+        let typingText;
+
+        function startTypingTest() {
+            clearInterval(typingInterval);
+            
+            const randomSentence = turkishSentences[Math.floor(Math.random() * turkishSentences.length)];
+            typingText = randomSentence;
+            
+            const display = document.getElementById('typing-text-display');
+            const input = document.getElementById('typing-input');
+            
+            display.textContent = randomSentence;
+            input.value = '';
+            input.disabled = false;
+            input.focus();
+            
+            document.getElementById('typing-time').textContent = '0';
+            document.getElementById('typing-error').textContent = '0';
+            
+            typingStartTime = null;
+
+            input.oninput = () => {
+                if (!typingStartTime) {
+                    typingStartTime = new Date().getTime();
+                    typingInterval = setInterval(updateTypingTime, 1000);
+                }
+                checkTypingProgress();
+            };
+        }
+
+        function updateTypingTime() {
+            const elapsed = Math.floor((new Date().getTime() - typingStartTime) / 1000);
+            document.getElementById('typing-time').textContent = elapsed;
+        }
+
+        function checkTypingProgress() {
+            const input = document.getElementById('typing-input');
+            const userText = input.value;
+            const originalText = typingText;
+            let errors = 0;
+            
+            // Hata sayısını hesapla
+            for (let i = 0; i < userText.length; i++) {
+                if (userText[i] !== originalText[i]) {
+                    errors++;
+                }
+            }
+
+            document.getElementById('typing-error').textContent = errors;
+            
+            // Bitirme Kontrolü
+            if (userText.length === originalText.length) {
+                 if (userText === originalText) {
+                    endGame();
+                 }
+            }
+        }
+
+        function endGame() {
+            clearInterval(typingInterval);
+            const totalTime = Math.floor((new Date().getTime() - typingStartTime) / 1000);
+            const errors = parseInt(document.getElementById('typing-error').textContent);
+            const input = document.getElementById('typing-input');
+            input.disabled = true;
+            input.oninput = null;
+            typingStartTime = null;
+
+            alert(`Test Bitti! Süre: ${totalTime} saniye, Hata Sayısı: ${errors}`);
+            document.getElementById('typing-info').innerHTML = `Sonuç: **${totalTime}s** | Hata: **${errors}**`;
+        }
+
+
+        // ==========================================================
+        // SAYFA BAŞLANGICI VE TÜM İŞLEVLERİ BAŞLATMA
+        // ==========================================================
+        function initAll() {
+            // Oyunları Başlat
+            initializeGame();       // Kelime Tahmin
+            initNumberGame();       // Sayı Tahmin
+            initMemoryGame();       // Hafıza Oyunu
+            initIshihara();         // Renk Körlüğü
+            initMazeGame();         // Labirent
+            nextStroopQuestion();   // Renk Adı Tahmin Oyunu
+            nextMathQuestion();     // Dört İşlem Çarkı
+            nextFlagQuestion();     // Hangi Bayrak?
+
+            // Araçları Başlat/Güncelle
+            updateResourcesDisplay(); // Minecraft
+            updateClickerDisplay();  // Clicker
+            loadNote();              // Not Defteri
+            loadTodos();             // To-Do Listesi
+            initThreeJS();           // 3D Küp
+        }
+    </script>
+</body>
+</html>

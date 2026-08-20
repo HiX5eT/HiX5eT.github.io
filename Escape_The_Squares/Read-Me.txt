@@ -1,0 +1,43 @@
+# 🚀 Escape The Squares! - Dynamic Arena Shooter
+
+Bu, 12 yaşımda geliştirdiğim, HTML5 Canvas tabanlı, dinamik bir arena shooter oyunudur. Amacım, klasik iki boyutlu oyunlara dinamik renkler, gelişmiş bir yükseltme sistemi ve mobil uyumluluk eklemekti.
+
+## 🌟 Temel Özellikler
+
+- **Dinamik Renk Kademeleri:** Düşmanlar ve silah yükseltmeleri, özel Hex kodları ile renklendirilmiş 7 farklı kademeye sahiptir. (**Rainbow/Gökkuşağı** efekti dahil!)
+- **Gelişmiş Silah Yükseltme Sistemi:** Puan karşılığında atış hızını ve mermi sayısını artıran 7 kademeli yükseltme ağacı (Common'dan Private'a).
+- **Ağır Silah (Heavy Weapon):** Zor durumda kaldığınızda tüm düşmanları temizlemek için kullanılan, cooldown'a (bekleme süresi) sahip özel yetenek.
+- **Dinamik Zorluk:** Oyun ilerledikçe düşman spawn hızı otomatik olarak artar.
+- **Tam Mobil Uyumlu:** Masaüstü (Klavye/Mouse) ve Mobil (Dokunmatik Joystick) desteği.
+- **Kromatik Arka Plan:** Oyun alanı, sürekli değişen canlı renklerle dinamik bir görünüme sahiptir.
+
+## 🌈 Renk Kademeleri (Loot Tiers)
+
+| Kategori | Hex Kodu | Açıklama |
+| :--- | :--- | :--- |
+| **Common** | `#F5F5F5` (Beyaz) | En yaygın, 1 Puan |
+| **Uncommon** | `#98FB98` (Açık Yeşil) | 3 Puan |
+| **Rare** | `#0000FF` (Mavi) | 5 Puan |
+| **Epic** | `#4B0082` (İndigo) | 10 Puan |
+| **Mythical** | `#FF0000` (Kırmızı) | 15 Puan |
+| **Legend** | `#FFFF00` (Sarı) | 20 Puan |
+| **Private** | `Rainbow` | En nadir, 30 Puan. Dinamik renk döngüsüne sahiptir! |
+
+## 🕹️ Nasıl Oynanır?
+
+| Kontrol | Masaüstü | Mobil |
+| :--- | :--- | :--- |
+| **Hareket** | W A S D | Sol alttaki Dokunmatik Joystick |
+| **Ateş Et** | Mouse Tıklaması | Ekrana dokunma |
+| **Yükseltme** | U Tuşu | Sağ üstteki Geliştir Butonu |
+| **Ağır Silah** | Q Tuşu | - |
+
+## ⚙️ Teknolojiler
+
+- HTML5
+- Canvas API
+- JavaScript (Vanilla JS)
+- CSS3
+
+---
+> Geliştirici: HiX5eT
