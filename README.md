@@ -29,3 +29,5 @@ Projelerimi ve güncellemelerimi takip etmek için web sitemi ziyaret edebilirsi
 > "Kod yazmak sadece bir iş değil, bir dünyayı sıfırdan inşa etmektir." 
 
 📫 **Bana Ulaşın:** Projelerim hakkında fikir alışverişi yapmak isterseniz GitHub üzerinden iletişime geçebilirsiniz!
+
+(HıX5eT: Sadece 13 yaşın da C++ bilen bir çocuk olan ben)
