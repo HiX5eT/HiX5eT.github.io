@@ -30,4 +30,4 @@ Projelerimi ve güncellemelerimi takip etmek için web sitemi ziyaret edebilirsi
 
 📫 **Bana Ulaşın:** Projelerim hakkında fikir alışverişi yapmak isterseniz GitHub üzerinden iletişime geçebilirsiniz!
 
-(HıX5eT: Sadece 13 yaşın da C++ bilen bir çocuk.)
+(HıX5eT: Sadece 13 yaşında C++ bilen bir çocuk.)
