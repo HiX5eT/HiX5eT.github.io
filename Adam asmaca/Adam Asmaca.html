@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adam Asmaca - Tek Dosya</title>
+    <style>
+        /* CSS TASARIMI */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f0f2f5; 
+        }
+        .game-container { 
+            text-align: center; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* Çizim Alanı */
+        .hangman-box { margin-bottom: 20px; }
+        .draw-area { 
+            position: relative; 
+            width: 200px; 
+            height: 200px; 
+            margin: 0 auto; 
+            border-bottom: 4px solid #333; 
+        }
+        .pole { position: absolute; left: 30px; bottom: 0; width: 4px; height: 100%; background: #333; }
+        .top { position: absolute; left: 30px; top: 0; width: 100px; height: 4px; background: #333; }
+        .rope { position: absolute; left: 130px; top: 0; width: 4px; height: 30px; background: #333; }
+
+        /* Adamın Parçaları */
+        .man div { position: absolute; background: #e74c3c; display: none; }
+        .head { width: 30px; height: 30px; border-radius: 50%; left: 115px; top: 30px; border: 4px solid #e74c3c; background: transparent !important; }
+        .body { width: 4px; height: 60px; left: 130px; top: 60px; }
+        .left-arm { width: 40px; height: 4px; left: 90px; top: 80px; transform: rotate(-30deg); }
+        .right-arm { width: 40px; height: 4px; left: 134px; top: 80px; transform: rotate(30deg); }
+        .left-leg { width: 40px; height: 4px; left: 95px; top: 140px; transform: rotate(-45deg); }
+        .right-leg { width: 40px; height: 4px; left: 129px; top: 140px; transform: rotate(45deg); }
+
+        /* Kelime ve Klavye */
+        .word-display { font-size: 2.5rem; letter-spacing: 8px; margin: 20px 0; font-weight: bold; color: #2c3e50; }
+        .keyboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); gap: 8px; margin-top: 20px; }
+        .keyboard button { 
+            padding: 10px 5px; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            background: #fff;
+            border: 2px solid #3498db;
+            color: #3498db;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+        .keyboard button:hover { background: #3498db; color: white; }
+        .keyboard button:disabled { background: #ecf0f1; border-color: #bdc3c7; color: #7f8c8d; cursor: not-allowed; }
+
+        #reset-btn { 
+            margin-top: 25px; 
+            background: #27ae60; 
+            color: white; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 25px; 
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        #reset-btn:hover { background: #219150; }
+        .status-text { color: #7f8c8d; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Adam Asmaca</h1>
+        
+        <div class="hangman-box">
+            <div class="draw-area">
+                <div class="pole"></div>
+                <div class="top"></div>
+                <div class="rope"></div>
+                <div id="man" class="man">
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="left-arm"></div>
+                    <div class="right-arm"></div>
+                    <div class="left-leg"></div>
+                    <div class="right-leg"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="word-display" class="word-display"></div>
+        <p class="status-text">Hatalı Tahmin: <span id="wrong-count">0</span> / 6</p>
+        
+        <div id="keyboard" class="keyboard"></div>
+        
+        <button id="reset-btn">Yeni Oyun Başlat</button>
+    </div>
+
+    <script>
+        // JAVASCRIPT MANTIĞI
+        const words = ["JAVASCRIPT", "YAZILIM", "BİLGİSAYAR", "KODLAMA", "TEKNOLOJİ", "İNTERNET", "KLAVYE", "DÜNYA"];
+        let selectedWord = "";
+        let guessedLetters = [];
+        let wrongGuesses = 0;
+
+        const manParts = document.querySelectorAll(".man div");
+        const wordDisplay = document.getElementById("word-display");
+        const wrongCountDisplay = document.getElementById("wrong-count");
+        const keyboard = document.getElementById("keyboard");
+
+        function initGame() {
+            // Değerleri sıfırla
+            selectedWord = words[Math.floor(Math.random() * words.length)].toUpperCase();
+            guessedLetters = [];
+            wrongGuesses = 0;
+            
+            // Arayüzü temizle
+            wrongCountDisplay.innerText = wrongGuesses;
+            manParts.forEach(part => part.style.display = "none");
+            
+            createKeyboard();
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const display = selectedWord.split("").map(letter => 
+                guessedLetters.includes(letter) ? letter : "_"
+            ).join(" ");
+            
+            wordDisplay.innerText = display;
+
+            // Kazanma kontrolü
+            if (!display.includes("_")) {
+                setTimeout(() => alert("Tebrikler! Kelimeyi buldunuz: " + selectedWord), 100);
+                disableButtons();
+            }
+        }
+
+        function createKeyboard() {
+            keyboard.innerHTML = "";
+            const alphabet = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ";
+            
+            alphabet.split("").forEach(char => {
+                const btn = document.createElement("button");
+                btn.innerText = char;
+                btn.onclick = () => handleGuess(char, btn);
+                keyboard.appendChild(btn);
+            });
+        }
+
+        function handleGuess(letter, btn) {
+            btn.disabled = true;
+            
+            if (selectedWord.includes(letter)) {
+                guessedLetters.push(letter);
+                updateDisplay();
+            } else {
+                wrongGuesses++;
+                wrongCountDisplay.innerText = wrongGuesses;
+                
+                // Adamın parçalarını göster
+                if (manParts[wrongGuesses - 1]) {
+                    manParts[wrongGuesses - 1].style.display = "block";
+                }
+
+                // Kaybetme kontrolü
+                if (wrongGuesses === 6) {
+                    setTimeout(() => alert("Maalesef kaybettiniz! Kelime: " + selectedWord), 100);
+                    disableButtons();
+                }
+            }
+        }
+
+        function disableButtons() {
+            const buttons = keyboard.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+        }
+
+        document.getElementById("reset-btn").addEventListener("click", initGame);
+
+        // İlk açılışta oyunu başlat
+        initGame();
+    </script>
+</body>
+</html>
