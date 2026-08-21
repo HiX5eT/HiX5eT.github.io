@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Esporcu & PC Build Tycoon - Full Hardware Edition</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0c10; color: #c5c6c7; margin: 0; padding: 15px; }
+        h1, h2, h3, h4 { color: #66fcf1; margin-top: 5px; margin-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: 360px 1fr; gap: 15px; }
+        .box { background: #1f2833; border: 1px solid #45a29e; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
+        .stats span { color: #f7fff7; font-weight: bold; }
+        .highlight { color: #ffbf00; font-weight: bold; }
+        button { background: #45a29e; border: none; color: #0b0c10; padding: 7px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 3px 0; width: 100%; transition: 0.2s; }
+        button:hover { background: #66fcf1; }
+        button:disabled { background: #2c3539; color: #666; cursor: not-allowed; }
+        .btn-action { background: #ffbf00; color: #000; font-size: 13px; }
+        .btn-action:hover { background: #ffe100; }
+        .btn-danger { background: #e63946; color: white; }
+        .btn-danger:hover { background: #ff4d5e; }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+        .item-card { background: #0b0c10; border: 1px solid #1f2833; padding: 8px; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; }
+        .item-card b { color: #66fcf1; font-size: 13px; }
+        #log { background: #000; padding: 10px; height: 130px; overflow-y: scroll; border: 1px solid #45a29e; font-family: 'Courier New', monospace; font-size: 12px; color: #39ff14; border-radius: 5px; margin-top: 10px; }
+        .tab-btn { width: auto; padding: 6px 12px; margin-right: 4px; background: #1f2833; color: #c5c6c7; font-size: 12px; }
+        .tab-btn.active { background: #66fcf1; color: #0b0c10; }
+        .badge { background: #e63946; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Esporcu & PC Build Tycoon <span style="font-size:12px; color:#aaa;">(Full Hardware Master)</span></h1>
+    
+    <div class="grid">
+        <div>
+            <div class="box">
+                <h2>👤 Sistem & Performans</h2>
+                <div class="stats" style="font-size: 13px;">
+                    <p>💰 Bakiye: <span class="highlight" id="money">3.000</span> TL</p>
+                    <p>🎮 Gerçek FPS: <span class="highlight" id="effective-fps">60</span> FPS <small>(Hz Limiti)</small></p>
+                    <p>⚡ Ham Kasa FPS: <span id="raw-fps">60</span> FPS</p>
+                    <p>🖥️ Monitör: <span id="hz">60</span> Hz</p>
+                    <p>🏆 Espor Skill: <span id="skill">15</span></p>
+                    <p>🔥 İşlemci Sıcaklığı: <span id="temp">45°C</span></p>
+                    <hr style="border-color:#45a29e;">
+                    <p>💻 Sistem Türü: <span id="sys-type" class="badge">Laptop</span></p>
+                    <p>🧩 CPU: <span id="cpu">AMD Ryzen 7 7730U</span></p>
+                    <p>🖼️ GPU: <span id="gpu">Radeon Vega 8</span></p>
+                    <p>🧠 RAM: <span id="ram">16 GB DDR4</span></p>
+                    <p>🔌 Anakart: <span id="mobo">Laptop Dahili</span></p>
+                    <p>⚡ PSU: <span id="psu">300W Dahili</span></p>
+                    <p>❄️ Soğutucu: <span id="cooler">Stok Fan</span></p>
+                    <p>🧪 Macun: <span id="paste">Standart Macun</span></p>
+                    <p>💾 SSD: <span id="ssd">512 GB SATA SSD</span></p>
+                    <p>🖱️ Ekipman: <span id="gear">Ofis Seti</span></p>
+                </div>
+            </div>
+
+            <div class="box" style="margin-top: 10px;">
+                <h2>⚔️ Aksiyonlar</h2>
+                <button class="btn-action" onclick="train()">🎯 Aim Antrenmanı (+2 Skill)</button>
+                <button class="btn-action" onclick="playMatch()">🎮 Dereceli Maç Oyna (+Para)</button>
+                <button class="btn-action" onclick="enterTournament()">🏆 Espor Turnuvası</button>
+                <hr style="border-color:#45a29e;">
+                <h2>⚡ Overclock (OC)</h2>
+                <button class="btn-danger" onclick="overclock()">🔥 İşlemciye Voltaj Ver (+FPS / Risk)</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <div>
+                <button class="tab-btn active" onclick="switchTab('laptop-trade')">📱 Laptop Alım-Satım</button>
+                <button class="tab-btn" onclick="switchTab('desktop-core')">🖥️ Ana Parçalar (CPU/GPU/MOBO)</button>
+                <button class="tab-btn" onclick="switchTab('desktop-sub')">⚡ Yan Parçalar (RAM/PSU/SSD)</button>
+                <button class="tab-btn" onclick="switchTab('desktop-cool')">❄️ Soğutma & Macun</button>
+                <button class="tab-btn" onclick="switchTab('desktop-periph')">🖱️ Monitör & Ekipman</button>
+            </div>
+
+            <div id="tab-laptop-trade" style="margin-top: 10px;">
+                <h3>📦 Sarı Site (Alım-Satım)</h3>
+                <div id="laptop-market-list" class="shop-grid"></div>
+                <h3 style="margin-top:15px;">🎒 Envanterdeki Satılık Laptoplar</h3>
+                <div id="inventory-list" class="shop-grid"></div>
+            </div>
+
+            <div id="tab-desktop-core" style="display:none; margin-top: 10px;">
+                <h4>🔵/🔴 İşlemciler (CPU)</h4>
+                <div id="shop-cpu" class="shop-grid"></div>
+                <h4>🖼️ Ekran Kartları (GPU)</h4>
+                <div id="shop-gpu" class="shop-grid"></div>
+                <h4>🔌 Anakartlar (MOBO)</h4>
+                <div id="shop-mobo" class="shop-grid"></div>
+            </div>
+
+            <div id="tab-desktop-sub" style="display:none; margin-top: 10px;">
+                <h4>🧠 RAM Bellekler</h4>
+                <div id="shop-ram" class="shop-grid"></div>
+                <h4>⚡ Güç Kaynağı (PSU - Güç Yetmezse Sistem Kapanır!)</h4>
+                <div id="shop-psu" class="shop-grid"></div>
+                <h4>💾 SSD Depolama</h4>
+                <div id="shop-ssd" class="shop-grid"></div>
+            </div>
+
+            <div id="tab-desktop-cool" style="display:none; margin-top: 10px;">
+                <h4>❄️ Soğutucular (Hava & Sıvı Soğutma)</h4>
+                <div id="shop-cooler" class="shop-grid"></div>
+                <h4>🧪 Termal Macunlar</h4>
+                <div id="shop-paste" class="shop-grid"></div>
+            </div>
+
+            <div id="tab-desktop-periph" style="display:none; margin-top: 10px;">
+                <h4>🖥️ Monitörler (Hz Limiti)</h4>
+                <div id="shop-hz" class="shop-grid"></div>
+                <h4>🖱️ Oyuncu Ekipmanları (Mouse & Klavye)</h4>
+                <div id="shop-gear" class="shop-grid"></div>
+            </div>
+
+            <h2>📜 Log Ekranı</h2>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let player = {
+            money: 1500,
+            skill: 15,
+            isDesktop: false,
+            cpu: { name: "AMD Ryzen 7 7730U", power: 40, watts: 15 },
+            gpu: { name: "Radeon Vega 8", power: 20, watts: 15 },
+            ram: { name: "16 GB DDR4 3200MHz", power: 15 },
+            mobo: { name: "Laptop Dahili", power: 5 },
+            psu: { name: "300W Dahili", watts: 300 },
+            cooler: { name: "Stok Fan", cooling: 10 },
+            paste: { name: "Standart Macun", cooling: 5 },
+            ssd: { name: "512 GB SATA SSD", power: 10 },
+            hz: 60,
+            gear: { name: "Ofis Seti", skillBonus: 0 },
+            ocBonus: 0,
+            inventory: []
+        };
+
+        const laptopDeals = [
+            { id: 1, name: "Pentium E5500 Emektar Laptop", buyPrice: 700, sellPrice: 1200, desc: "Hurdacıdan çıkma, idare eder." },
+            { id: 2, name: "i5-650 Bilgisayar Kasası", buyPrice: 1500, sellPrice: 2400, desc: "Ofis bilgisayarı." },
+            { id: 3, name: "Asus TUF Ryzen 7 7730U", buyPrice: 11000, sellPrice: 15500, desc: "Pili sağlam, temiz cihaz." },
+            { id: 4, name: "MSI Katana i7-14650HX RTX 4060", buyPrice: 35000, sellPrice: 46000, desc: "Oyuncu laptopu." },
+            { id: 5, name: "ROG Strix i9-14900HX RTX 4080", buyPrice: 65000, sellPrice: 85000, desc: "Canavar laptop." }
+        ];
+
+        const market = {
+            cpus: [
+                { name: "Intel Pentium 4 (Press-hot)", price: 300, power: 5, watts: 90 },
+                { name: "Intel Core i7-7700", price: 2500, power: 50, watts: 65 },
+                { name: "AMD Ryzen 5 7500F", price: 6000, power: 120, watts: 65 },
+                { name: "Intel Core i7-13500", price: 18500, power: 220, watts: 250 },
+                { name: "AMD Ryzen 7 7800X3D (Oyun Kralı)", price: 22000, power: 300, watts: 120 },
+                { name: "Intel Core i9-14900KS", price: 30000, power: 350, watts: 320 }
+            ],
+            gpus: [
+                { name: "NVIDIA GT 420", price: 400, power: 10, watts: 50 },
+                { name: "NVIDIA GTX 1650", price: 3000, power: 55, watts: 75 },
+                { name: "NVIDIA RTX 3060 12GB", price: 9000, power: 120, watts: 170 },
+                { name: "NVIDIA RTX 4060 Ti", price: 16000, power: 180, watts: 160 },
+                { name: "NVIDIA RTX 4080 Super", price: 42000, power: 350, watts: 320 },
+                { name: "NVIDIA RTX 5090 32GB (Saf Güç)", price: 90000, power: 600, watts: 600 }
+            ],
+            mobos: [
+                { name: "H61M Eski Anakart", price: 1000, power: 5 },
+                { name: "B650M Gaming Wifi", price: 5500, power: 25 },
+                { name: "Z790 Taichi Overclock Canavarı", price: 14000, power: 60 }
+            ],
+            rams: [
+                { name: "4 GB DDR3 RAM", price: 300, power: 5 },
+                { name: "16 GB DDR4 3200MHz Dual", price: 1400, power: 20 },
+                { name: "32 GB DDR5 6000MHz CL30", price: 4800, power: 50 },
+                { name: "64 GB DDR5 RGB Extreme Kit", price: 10500, power: 85 }
+            ],
+            psus: [
+                { name: "400W Standart PSU", price: 1000, watts: 400 },
+                { name: "650W 80+ Bronze", price: 2500, watts: 650 },
+                { name: "850W 80+ Gold Modüler", price: 5000, watts: 850 },
+                { name: "1200W Platinum Canavar PSU", price: 11000, watts: 1200 }
+            ],
+            ssds: [
+                { name: "240 GB SATA SSD", price: 600, power: 5 },
+                { name: "1 TB M.2 NVMe Gen4 (7000MB/s)", price: 3000, power: 25 },
+                { name: "2 TB Gen5 Canavar SSD (12000MB/s)", price: 8500, power: 55 }
+            ],
+            coolers: [
+                { name: "Kule Tipi Hava Soğutma (AG400)", price: 1200, cooling: 30 },
+                { name: "240mm Sıvı Soğutma", price: 3500, cooling: 60 },
+                { name: "360mm RGB Canavar Sıvı Soğutma", price: 7500, cooling: 95 }
+            ],
+            pastes: [
+                { name: "Arctic MX-4 Kaliteli Macun", price: 350, cooling: 15 },
+                { name: "Thermal Grizzly Kryonaut", price: 750, cooling: 30 },
+                { name: "Sıvı Metal (Liquid Metal Extreme)", price: 1500, cooling: 55 }
+            ],
+            hzs: [
+                { name: "75 Hz Monitör", price: 2200, hz: 75 },
+                { name: "144 Hz Oyuncu Monitörü", price: 4800, hz: 144 },
+                { name: "240 Hz Espor Monitörü", price: 9500, hz: 240 },
+                { name: "360 Hz OLED Espor Canavarı", price: 22000, hz: 360 }
+            ],
+            gears: [
+                { name: "Logitech G102 + Mekanik Klavye", price: 1200, bonus: 10 },
+                { name: "Razer Superlight + Custom Klavye", price: 5500, bonus: 30 },
+                { name: "Wooting 60HE + WLmouse Beast X", price: 13500, bonus: 60 }
+            ]
+        };
+
+        function getRawFPS() {
+            let totalWatts = (player.cpu.watts || 15) + (player.gpu.watts || 15);
+            if (player.isDesktop && totalWatts > player.psu.watts) {
+                return 10; // PSU YETMEDİĞİ İÇİN KASIYOR
+            }
+            return player.cpu.power + player.gpu.power + player.ram.power + player.mobo.power + player.ssd.power + player.ocBonus;
+        }
+
+        function getEffectiveFPS() {
+            return Math.min(getRawFPS(), player.hz);
+        }
+
+        function getTemp() {
+            let heat = (player.cpu.power + player.ocBonus) - (player.cooler.cooling + player.paste.cooling);
+            return Math.max(35, 45 + heat);
+        }
+
+        function updateUI() {
+            document.getElementById("money").innerText = player.money.toLocaleString();
+            document.getElementById("raw-fps").innerText = getRawFPS();
+            document.getElementById("effective-fps").innerText = getEffectiveFPS();
+            document.getElementById("hz").innerText = player.hz;
+            document.getElementById("skill").innerText = `${player.skill} (+${player.gear.skillBonus})`;
+            document.getElementById("temp").innerText = `${getTemp()}°C`;
+            document.getElementById("temp").style.color = getTemp() > 80 ? '#e63946' : '#66fcf1';
+
+            document.getElementById("sys-type").innerText = player.isDesktop ? "Masaüstü Canavar" : "Laptop";
+            document.getElementById("cpu").innerText = player.cpu.name;
+            document.getElementById("gpu").innerText = player.gpu.name;
+            document.getElementById("ram").innerText = player.ram.name;
+            document.getElementById("mobo").innerText = player.mobo.name;
+            document.getElementById("psu").innerText = player.psu.name;
+            document.getElementById("cooler").innerText = player.cooler.name;
+            document.getElementById("paste").innerText = player.paste.name;
+            document.getElementById("ssd").innerText = player.ssd.name;
+            document.getElementById("gear").innerText = player.gear.name;
+
+            renderLaptopMarket();
+            renderDesktopShops();
+        }
+
+        function log(msg) {
+            const logBox = document.getElementById("log");
+            logBox.innerHTML += `> ${msg}<br>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function switchTab(tab) {
+            ['laptop-trade', 'desktop-core', 'desktop-sub', 'desktop-cool', 'desktop-periph'].forEach(t => {
+                document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function buyLaptop(id) {
+            let deal = laptopDeals.find(x => x.id === id);
+            if (player.money >= deal.buyPrice) {
+                player.money -= deal.buyPrice;
+                player.inventory.push({...deal});
+                log(`📦 Sarı siteden satın alındı: <b>${deal.name}</b>`);
+                updateUI();
+            }
+        }
+
+        function sellLaptop(index) {
+            let item = player.inventory[index];
+            player.money += item.sellPrice;
+            log(`💰 İlan Satıldı! <b>${item.name}</b> kâr: +${item.sellPrice - item.buyPrice} TL`);
+            player.inventory.splice(index, 1);
+            updateUI();
+        }
+
+        function renderLaptopMarket() {
+            let html = "";
+            laptopDeals.forEach(l => {
+                html += `<div class="item-card">
+                    <div><b>${l.name}</b><br><small>${l.desc}</small><br><span style="color:#66fcf1">Alış: ${l.buyPrice.toLocaleString()} TL</span></div>
+                    <button onclick="buyLaptop(${l.id})" ${player.money < l.buyPrice ? "disabled" : ""}>Satın Al</button>
+                </div>`;
+            });
+            document.getElementById("laptop-market-list").innerHTML = html;
+
+            let invHtml = player.inventory.length === 0 ? "<p style='color:#777'>Satılık cihaz yok.</p>" : "";
+            player.inventory.forEach((item, i) => {
+                invHtml += `<div class="item-card">
+                    <div><b>${item.name}</b><br><span style="color:#ffbf00">Satış Fiyatı: ${item.sellPrice.toLocaleString()} TL</span></div>
+                    <button class="btn-action" onclick="sellLaptop(${i})">Sarı Sitede Sat</button>
+                </div>`;
+            });
+            document.getElementById("inventory-list").innerHTML = invHtml;
+        }
+
+        function buyDesktopItem(type, index) {
+            let selected = market[type + 's'][index];
+            if (player.money >= selected.price) {
+                player.money -= selected.price;
+                player.isDesktop = true;
+                if (type === 'hz') player.hz = selected.hz;
+                else if (type === 'gear') player.gear = selected;
+                else player[type] = selected;
+                log(`🖥️ Parça Takıldı: <b>${selected.name}</b>`);
+                updateUI();
+            }
+        }
+
+        function renderDesktopShops() {
+            const build = (list, type) => {
+                let html = "";
+                list.forEach((item, i) => {
+                    let stat = item.power ? `+${item.power} FPS` : (item.hz ? `${item.hz} Hz` : (item.cooling ? `-${item.cooling}°C Soğutma` : (item.watts ? `${item.watts}W Güç` : `+${item.bonus} Skill`)));
+                    html += `<div class="item-card">
+                        <div><b>${item.name}</b><br><small>${stat} | ${item.price.toLocaleString()} TL</small></div>
+                        <button onclick="buyDesktopItem('${type}', ${i})" ${player.money < item.price ? "disabled" : ""}>Satın Al & Tak</button>
+                    </div>`;
+                });
+                return html;
+            };
+
+            document.getElementById("shop-cpu").innerHTML = build(market.cpus, 'cpu');
+            document.getElementById("shop-gpu").innerHTML = build(market.gpus, 'gpu');
+            document.getElementById("shop-mobo").innerHTML = build(market.mobos, 'mobo');
+            document.getElementById("shop-ram").innerHTML = build(market.rams, 'ram');
+            document.getElementById("shop-psu").innerHTML = build(market.psus, 'psu');
+            document.getElementById("shop-ssd").innerHTML = build(market.ssds, 'ssd');
+            document.getElementById("shop-cooler").innerHTML = build(market.coolers, 'cooler');
+            document.getElementById("shop-paste").innerHTML = build(market.pastes, 'paste');
+            document.getElementById("shop-hz").innerHTML = build(market.hzs, 'hz');
+            document.getElementById("shop-gear").innerHTML = build(market.gears, 'gear');
+        }
+
+        function train() {
+            player.skill += 2;
+            log("🎯 Aim Antrenmanı Yapıldı. Espor Yeteneğin 2 Arttı.");
+            updateUI();
+        }
+
+        function playMatch() {
+            let totalWatts = (player.cpu.watts || 15) + (player.gpu.watts || 15);
+            if (player.isDesktop && totalWatts > player.psu.watts) {
+                log("💥 <b>GÜÇ YETMESİZLİĞİ!</b> Ekran kartın ve İşlemcin çok yakıyor, PSU yetmediği için sistem kapandı!");
+                updateUI();
+                return;
+            }
+            let fps = getEffectiveFPS();
+            let reward = Math.floor(((player.skill + player.gear.skillBonus) * 20) + (fps * 3));
+            player.money += reward;
+            log(`🎮 Dereceli Maç Kazandın! <b>+${reward.toLocaleString()} TL</b> kazandın.`);
+            updateUI();
+        }
+
+        function enterTournament() {
+            if (getEffectiveFPS() < 144) {
+                log("❌ Turnuva için en az 144 Hz / Effective FPS şart!");
+                return;
+            }
+            if ((player.skill + player.gear.skillBonus) < 80) {
+                log("❌ Rakipler çok iyi. Toplam skill seviyen en az 80 olmalı!");
+                return;
+            }
+            let prize = 50000 + (getEffectiveFPS() * 60);
+            player.money += prize;
+            log(`🏆 <b>ŞAMPİYON SENSİN!</b> Espor Turnuvasını Kazandın! Ödül: <b>+${prize.toLocaleString()} TL</b>`);
+            updateUI();
+        }
+
+        function overclock() {
+            let temp = getTemp();
+            if (temp > 85) {
+                player.ocBonus = 0;
+                log("💥 <b>SİSTEM AŞIRI ISINDI VE YANDI!</b> Soğutucun yetersiz. Overclock sıfırlandı.");
+            } else {
+                player.ocBonus += 40;
+                log("🔥 Overclock Başarılı! <b>+40 FPS</b> Katlandı.");
+            }
+            updateUI();
+        }
+
+        updateUI();
+        log("🎮 Full Hardware Tycoon Başlatıldı! İyi Eğlenceler!");
+    </script>
+</body>
+</html>
