@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HTML CANAVARI: Ultimate Edition</title>
+    <style>
+        body { margin: 0; background: #000; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; display: flex; touch-action: none; }
+        
+        /* Giriş Ekranı */
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .start-btn { padding: 20px 40px; margin: 10px; font-size: 24px; border: 2px solid #0f0; background: none; color: #0f0; cursor: pointer; transition: 0.3s; }
+        .start-btn:hover { background: #0f0; color: #000; }
+
+        /* Sol Menü / Dükkan */
+        #sidebar { width: 220px; background: #050505; border-right: 2px solid #333; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
+        .shop-item { background: #111; border: 1px solid #0f0; padding: 8px; cursor: pointer; text-align: center; font-size: 12px; }
+        .price { color: #ff0; }
+
+        /* Oyun Alanı */
+        #game-container { flex-grow: 1; position: relative; overflow: hidden; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; width: 95%; }
+        .bar-container { width: 100%; height: 12px; border: 1px solid #333; background: #111; margin: 3px 0; }
+        #boss-hp-bar { width: 100%; height: 100%; background: #f00; }
+        #player-hp-bar { width: 100%; height: 100%; background: #0f0; }
+
+        /* Mobil Kontroller */
+        #mobile-controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: none; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
+        .m-btn { width: 80px; height: 80px; background: rgba(0,255,0,0.2); border: 2px solid #0f0; border-radius: 50%; pointer-events: auto; display: flex; align-items: center; justify-content: center; color: #0f0; font-weight: bold; }
+        #joystick-area { width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; position: relative; }
+        #joystick-stick { width: 40px; height: 40px; background: #0f0; border-radius: 50%; position: absolute; top: 40px; left: 40px; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <h1 style="color:red; font-size: 48px;">HTML CANAVARI</h1>
+    <p>KONTROL CİHAZINI SEÇİN</p>
+    <button class="start-btn" onclick="startGame('pc')">💻 PC / KLAVYE</button>
+    <button class="start-btn" onclick="startGame('mobile')">📱 DOKUNMATİK</button>
+</div>
+
+<div id="sidebar">
+    <h3 style="color: gold; margin:0;">DÜKKAN</h3>
+    <div id="gold-display" style="color:yellow; font-size: 18px;">0 💰</div>
+    <div class="shop-item" onclick="buyUpgrade('speed')">HIZ (+1) <br> <span class="price">500</span></div>
+    <div class="shop-item" onclick="buyUpgrade('fireRate')">ATEŞ HIZI <br> <span class="price">1000</span></div>
+    <div class="shop-item" onclick="buyUpgrade('tripleShot')">ÜÇLÜ ATEŞ <br> <span class="price">2500</span></div>
+    <div class="shop-item" onclick="buyUpgrade('nuke')">BOMBA (TÜMÜ) <br> <span class="price">1500</span></div>
+    <div class="shop-item" onclick="buyUpgrade('heal')">CAN YENİLE <br> <span class="price">300</span></div>
+</div>
+
+<div id="game-container">
+    <div id="ui">
+        <div class="bar-container"><div id="boss-hp-bar"></div></div>
+        <div class="bar-container" style="width: 150px;"><div id="player-hp-bar"></div></div>
+    </div>
+    <canvas id="game"></canvas>
+    
+    <div id="mobile-controls">
+        <div id="joystick-area"><div id="joystick-stick"></div></div>
+        <div class="m-btn" id="fire-btn">ATEŞ</div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let controlType = 'pc';
+let gold = 0;
+let frames = 0;
+let gameActive = false;
+let keys = {};
+let upgrades = { speed: 7, fireRate: 15, tripleShot: false };
+
+// --- MOBİL KONTROL DEĞİŞKENLERİ ---
+let joyX = 0, joyY = 0;
+let isMobileFiring = false;
+
+function playSound(f, t, d) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+    g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + d);
+}
+
+function startGame(mode) {
+    controlType = mode;
+    document.getElementById('overlay').style.display = 'none';
+    if(mode === 'mobile') document.getElementById('mobile-controls').style.display = 'flex';
+    gameActive = true;
+    resize();
+    animate();
+}
+
+function resize() {
+    canvas.width = window.innerWidth - (window.innerWidth > 600 ? 220 : 0);
+    canvas.height = window.innerHeight;
+}
+
+// --- NESNE SINIFLARI ---
+class Boss {
+    constructor() {
+        this.x = canvas.width/2; this.y = 80; this.r = 50;
+        this.hp = 10000; this.maxHp = 10000; this.phase = 1; this.bullets = [];
+    }
+    update() {
+        this.x += Math.sin(frames * 0.03) * 8;
+        this.phase = Math.min(10, Math.floor((1 - (this.hp / this.maxHp)) * 10) + 1);
+        if(this.phase === 10) this.hp = Math.min(this.maxHp, this.hp + 20); // Ölümsüzlük
+        
+        if(frames % (20 - this.phase) === 0) this.shoot();
+        this.bullets.forEach((b, i) => {
+            b.x += b.vx; b.y += b.vy;
+            if(b.y > canvas.height) this.bullets.splice(i, 1);
+        });
+    }
+    shoot() {
+        let count = this.phase + 2;
+        for(let i=0; i<count; i++) {
+            let a = (Math.PI / (count-1)) * i;
+            this.bullets.push({x: this.x, y: this.y, vx: Math.cos(a)*5, vy: Math.sin(a)*5, r: 5});
+        }
+    }
+}
+
+class Player {
+    constructor() {
+        this.x = canvas.width/2; this.y = canvas.height-100; this.r = 15; this.hp = 100; this.bullets = [];
+    }
+    update() {
+        if(controlType === 'pc') {
+            if(keys['ArrowLeft'] || keys['KeyA']) this.x -= upgrades.speed;
+            if(keys['ArrowRight'] || keys['KeyD']) this.x += upgrades.speed;
+            if(keys['ArrowUp'] || keys['KeyW']) this.y -= upgrades.speed;
+            if(keys['ArrowDown'] || keys['KeyS']) this.y += upgrades.speed;
+        } else {
+            this.x += joyX * upgrades.speed;
+            this.y += joyY * upgrades.speed;
+        }
+
+        // Otomatik Ateş (PC için sürekli, Mobil için butona basılıyken)
+        if(frames % upgrades.fireRate === 0) {
+            if(controlType === 'pc' || isMobileFiring) this.shoot();
+        }
+
+        this.bullets.forEach((b, i) => {
+            b.y -= 15;
+            if(b.y < 0) this.bullets.splice(i, 1);
+        });
+    }
+    shoot() {
+        this.bullets.push({x: this.x, y: this.y-10});
+        if(upgrades.tripleShot) {
+            this.bullets.push({x: this.x-15, y: this.y});
+            this.bullets.push({x: this.x+15, y: this.y});
+        }
+        playSound(400, 'triangle', 0.05);
+    }
+}
+
+const boss = new Boss();
+const player = new Player();
+
+function buyUpgrade(type) {
+    if(type === 'speed' && gold >= 500) { gold -= 500; upgrades.speed += 2; }
+    if(type === 'fireRate' && gold >= 1000) { gold -= 1000; upgrades.fireRate = Math.max(3, upgrades.fireRate - 2); }
+    if(type === 'tripleShot' && gold >= 2500) { gold -= 2500; upgrades.tripleShot = true; }
+    if(type === 'heal' && gold >= 300) { gold -= 300; player.hp = 100; }
+    if(type === 'nuke' && gold >= 1500) { gold -= 1500; boss.bullets = []; boss.hp -= 500; playSound(100, 'sawtooth', 0.5); }
+    document.getElementById('gold-display').innerText = gold + " 💰";
+}
+
+// --- MOBİL DOKUNMATİK MANTIĞI ---
+const joyArea = document.getElementById('joystick-area');
+const joyStick = document.getElementById('joystick-stick');
+const fireBtn = document.getElementById('fire-btn');
+
+joyArea.addEventListener('touchmove', (e) => {
+    let rect = joyArea.getBoundingClientRect();
+    let touch = e.touches[0];
+    let x = touch.clientX - rect.left - 60;
+    let y = touch.clientY - rect.top - 60;
+    let dist = Math.min(Math.sqrt(x*x + y*y), 50);
+    let angle = Math.atan2(y, x);
+    joyX = Math.cos(angle) * (dist/50);
+    joyY = Math.sin(angle) * (dist/50);
+    joyStick.style.transform = `translate(${joyX*40}px, ${joyY*40}px)`;
+});
+joyArea.addEventListener('touchend', () => { joyX = 0; joyY = 0; joyStick.style.transform = `translate(0,0)`; });
+fireBtn.addEventListener('touchstart', () => isMobileFiring = true);
+fireBtn.addEventListener('touchend', () => isMobileFiring = false);
+
+// --- ANA DÖNGÜ ---
+function animate() {
+    if(!gameActive) return;
+    ctx.fillStyle = 'black'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    
+    player.update();
+    boss.update();
+
+    // Çarpışmalar
+    player.bullets.forEach((b, bi) => {
+        let dist = Math.hypot(b.x - boss.x, b.y - boss.y);
+        if(dist < boss.r) {
+            boss.hp -= 10; gold += 10;
+            player.bullets.splice(bi, 1);
+            document.getElementById('gold-display').innerText = gold + " 💰";
+        }
+    });
+
+    boss.bullets.forEach((b, bi) => {
+        let dist = Math.hypot(b.x - player.x, b.y - player.y);
+        if(dist < player.r) { player.hp -= 2; boss.bullets.splice(bi, 1); playSound(50, 'square', 0.1); }
+    });
+
+    // Çizim
+    ctx.fillStyle = boss.phase === 10 ? 'gold' : 'red';
+    ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r, 0, Math.PI*2); ctx.fill();
+    
+    ctx.fillStyle = '#0f0';
+    ctx.beginPath(); ctx.moveTo(player.x, player.y-15); ctx.lineTo(player.x-15, player.y+15); ctx.lineTo(player.x+15, player.y+15); ctx.fill();
+
+    ctx.fillStyle = '#0ff'; player.bullets.forEach(b => ctx.fillRect(b.x-2, b.y, 4, 10));
+    ctx.fillStyle = 'orange'; boss.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
+
+    document.getElementById('boss-hp-bar').style.width = (boss.hp/boss.maxHp*100)+'%';
+    document.getElementById('player-hp-bar').style.width = player.hp+'%';
+
+    if(player.hp <= 0) { alert("SİSTEM ÇÖKTÜ!"); location.reload(); return; }
+    
+    frames++;
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+window.onresize = resize;
+</script>
+</body>
+</html>
