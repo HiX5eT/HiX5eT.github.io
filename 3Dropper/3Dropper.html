@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="tr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>3D Dropper - Ultimate Edition</title>
+
+    <style>
+
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; touch-action: none; }
+
+        #menu-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; color: white; }
+
+        .btn { padding: 15px 40px; margin: 10px; font-size: 20px; cursor: pointer; border: 2px solid #00ffcc; background: transparent; color: #00ffcc; transition: 0.3s; width: 250px; text-align: center; }
+
+        .btn:hover { background: #00ffcc; color: black; }
+
+        #ui { position: absolute; top: 20px; left: 20px; color: white; pointer-events: none; display: none; }
+
+        #joystick-container { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; display: none; touch-action: none; }
+
+        #joystick { width: 50px; height: 50px; background: #00ffcc; border-radius: 50%; position: relative; top: 35px; left: 35px; }
+
+        canvas { display: block; }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <div id="menu-overlay">
+
+        <h1 id="menu-title">DROPPER 3D</h1>
+
+        <div id="step1">
+
+            <div class="btn" onclick="selectDevice('pc')">PC & KLAVYE</div>
+
+            <div class="btn" onclick="selectDevice('mobile')">DOKUNMATİK</div>
+
+        </div>
+
+        <div id="step2" style="display:none;">
+
+            <div class="btn" onclick="startGame('normal')">NORMAL MOD (10 Seviye)</div>
+
+            <div class="btn" onclick="startGame('infinite')">SONSUZ MOD</div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="ui">
+
+        <div id="level-tag">MOD: -</div>
+
+        <p id="control-hint">Hareket: WASD</p>
+
+    </div>
+
+
+
+    <div id="joystick-container">
+
+        <div id="joystick"></div>
+
+    </div>
+
+
+
+    <script type="importmap">
+
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+
+    </script>
+
+
+
+    <script type="module">
+
+        import * as THREE from 'three';
+
+
+
+        let scene, camera, renderer, playerLight;
+
+        let device = '', mode = '', currentLevel = 1;
+
+        let moveX = 0, moveZ = 0, velocityY = 0;
+
+        let obstacles = [];
+
+        let gameActive = false;
+
+
+
+        // Menü Fonksiyonları
+
+        window.selectDevice = (d) => {
+
+            device = d;
+
+            document.getElementById('step1').style.display = 'none';
+
+            document.getElementById('step2').style.display = 'block';
+
+            if(device === 'mobile') {
+
+                document.getElementById('joystick-container').style.display = 'block';
+
+                document.getElementById('control-hint').innerText = "Joystick'i kullan";
+
+            }
+
+        };
+
+
+
+        window.startGame = (m) => {
+
+            mode = m;
+
+            document.getElementById('menu-overlay').style.display = 'none';
+
+            document.getElementById('ui').style.display = 'block';
+
+            initGame();
+
+            gameActive = true;
+
+            animate();
+
+        };
+
+
+
+        function initGame() {
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+
+            camera.rotation.x = -Math.PI / 2;
+
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            document.body.appendChild(renderer.domElement);
+
+
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+            playerLight = new THREE.PointLight(0x00ffcc, 50, 100);
+
+            scene.add(playerLight);
+
+
+
+            setupLevel();
+
+        }
+
+
+
+        function setupLevel() {
+
+            obstacles.forEach(o => scene.remove(o));
+
+            obstacles = [];
+
+
+
+            let h = (mode === 'infinite') ? 1000 : 200 + (currentLevel * 60);
+
+            let count = (mode === 'infinite') ? 100 : 15 + (currentLevel * 5);
+
+
+
+            // Tünel
+
+            const tunnel = new THREE.Mesh(
+
+                new THREE.BoxGeometry(50, h + 200, 50),
+
+                new THREE.MeshStandardMaterial({ color: 0x111111, side: THREE.BackSide })
+
+            );
+
+            tunnel.position.y = h/2 - 50;
+
+            scene.add(tunnel);
+
+
+
+            // Engeller
+
+            for(let i=0; i<count; i++) {
+
+                const mesh = new THREE.Mesh(
+
+                    new THREE.BoxGeometry(Math.random()*20+5, 2, Math.random()*20+5),
+
+                    new THREE.MeshStandardMaterial({ color: new THREE.Color(`hsl(${Math.random()*360}, 70%, 50%)`) })
+
+                );
+
+                mesh.position.set((Math.random()-0.5)*35, h - (i*(h/count)) - 50, (Math.random()-0.5)*35);
+
+                scene.add(mesh);
+
+                obstacles.push(mesh);
+
+            }
+
+
+
+            // Su
+
+            const water = new THREE.Mesh(new THREE.PlaneGeometry(50,50), new THREE.MeshStandardMaterial({color: 0x00ccff}));
+
+            water.rotation.x = -Math.PI/2;
+
+            water.position.y = -50;
+
+            scene.add(water);
+
+
+
+            camera.position.set(0, h, 0);
+
+            velocityY = 0;
+
+            document.getElementById('level-tag').innerText = mode === 'infinite' ? "MOD: SONSUZ" : `SEVİYE: ${currentLevel} / 10`;
+
+        }
+
+
+
+        // --- KONTROLLER ---
+
+        const keys = {};
+
+        window.onkeydown = (e) => keys[e.code] = true;
+
+        window.onkeyup = (e) => keys[e.code] = false;
+
+
+
+        // Mobil Joystick Mantığı
+
+        const joy = document.getElementById('joystick');
+
+        let joyActive = false;
+
+        document.addEventListener('touchstart', (e) => { if(e.target.id === 'joystick' || e.target.id === 'joystick-container') joyActive = true; });
+
+        document.addEventListener('touchmove', (e) => {
+
+            if(!joyActive) return;
+
+            let touch = e.touches[0];
+
+            let rect = document.getElementById('joystick-container').getBoundingClientRect();
+
+            let x = touch.clientX - (rect.left + 60);
+
+            let z = touch.clientY - (rect.top + 60);
+
+            let dist = Math.min(Math.sqrt(x*x + z*z), 40);
+
+            let angle = Math.atan2(z, x);
+
+            joy.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+
+            moveX = Math.cos(angle) * (dist/40);
+
+            moveZ = Math.sin(angle) * (dist/40);
+
+        });
+
+        document.addEventListener('touchend', () => { 
+
+            joyActive = false; 
+
+            joy.style.transform = `translate(0px, 0px)`; 
+
+            moveX = 0; moveZ = 0;
+
+        });
+
+
+
+        function animate() {
+
+            if(!gameActive) return;
+
+            requestAnimationFrame(animate);
+
+
+
+            velocityY -= 0.01;
+
+            camera.position.y += velocityY;
+
+
+
+            // Hareket Kaynağı
+
+            if(device === 'pc') {
+
+                if(keys['KeyW']) camera.position.z -= 0.6;
+
+                if(keys['KeyS']) camera.position.z += 0.6;
+
+                if(keys['KeyA']) camera.position.x -= 0.6;
+
+                if(keys['KeyD']) camera.position.x += 0.6;
+
+            } else {
+
+                camera.position.x += moveX * 0.8;
+
+                camera.position.z += moveZ * 0.8;
+
+            }
+
+
+
+            playerLight.position.copy(camera.position);
+
+
+
+            // Çarpışma
+
+            const pBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(2,2,2));
+
+            for(let o of obstacles) {
+
+                if(pBox.intersectsBox(new THREE.Box3().setFromObject(o))) {
+
+                    setupLevel(); return;
+
+                }
+
+            }
+
+
+
+            // Kazanma / Bitiş
+
+            if(camera.position.y <= -45) {
+
+                if(mode === 'infinite' || currentLevel >= 10) {
+
+                    currentLevel = 1;
+
+                    setupLevel();
+
+                } else {
+
+                    currentLevel++;
+
+                    setupLevel();
+
+                }
+
+            }
+
+
+
+            // Sınır
+
+            if(Math.abs(camera.position.x) > 24 || Math.abs(camera.position.z) > 24) setupLevel();
+
+
+
+            renderer.render(scene, camera);
+
+        }
+
+    </script>
+
+</body>
+
+</html>
