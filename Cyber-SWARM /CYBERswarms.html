@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber-Swarm: Loot Protocol V2</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; overflow: hidden; font-family: 'Courier New', monospace; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; z-index: 10; }
+        .bar { width: 200px; height: 10px; border: 1px solid #0ff; margin: 5px 0; background: rgba(0,255,255,0.1); }
+        #hp-fill { width: 100%; height: 100%; background: #f00; }
+        #xp-fill { width: 0%; height: 100%; background: #0f0; }
+        
+        #loot-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95); display: none;
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .loot-container { display: flex; gap: 30px; margin-top: 30px; }
+        .loot-card {
+            width: 220px; padding: 25px; border: 3px solid #fff; text-align: center;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: #050505;
+        }
+        .loot-card:hover { transform: scale(1.1); background: #111; }
+        .loot-card h3 { margin: 10px 0; font-size: 22px; }
+        
+        .rare { border-color: #0070dd; box-shadow: 0 0 20px #0070dd; color: #0070dd; }
+        .epic { border-color: #a335ee; box-shadow: 0 0 30px #a335ee; color: #a335ee; }
+        .legendary { border-color: #ff8000; box-shadow: 0 0 40px #ff8000; color: #ff8000; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        SCORE: <span id="score">0</span> | LVL: <span id="lvl">1</span>
+        <div>HEALTH</div><div class="bar"><div id="hp-fill"></div></div>
+        <div>EXP</div><div class="bar"><div id="xp-fill"></div></div>
+    </div>
+
+    <div id="loot-menu">
+        <h1 style="color: #0ff; text-shadow: 0 0 15px #0ff; font-size: 40px;">BOSS DEFEATED!</h1>
+        <p style="font-size: 20px;">CHOOSE YOUR AUGMENTATION</p>
+        <div class="loot-container" id="loot-options"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let score = 0, level = 1, xp = 0, nextXp = 100;
+let enemies = [], bullets = [], enemyBullets = [], particles = [], boss = null;
+let isPaused = false;
+let lastEnemySpawn = 0;
+
+const player = {
+    x: canvas.width/2, y: canvas.height/2,
+    r: 18, angle: 0, speed: 6, hp: 100,
+    fireRate: 200, lastFire: 0, 
+    fireMode: 'normal'
+};
+
+const keys = {};
+window.onkeydown = e => keys[e.code] = true;
+window.onkeyup = e => keys[e.code] = false;
+
+const LOOT_TYPES = [
+    { id: 'rapid', name: 'OVERCLOCK', desc: 'INSANE FIRE RATE', color: 'rare' },
+    { id: 'triple', name: 'HYDRA', desc: '3-WAY SPREAD', color: 'epic' },
+    { id: 'nova', name: 'SUPERNOVA', desc: '360° DESTRUCTION', color: 'legendary' }
+];
+
+
+
+class Boss {
+    constructor() {
+        this.x = canvas.width / 2; this.y = -150; this.r = 80;
+        this.hp = 200 + (level * 50); this.maxHp = this.hp;
+        this.angle = 0; this.timer = 0;
+    }
+    update() {
+        if (this.y < 150) this.y += 1.5;
+        this.angle += 0.03; this.timer++;
+        if (this.timer % 20 === 0) {
+            for(let i=0; i<10; i++) {
+                let a = this.angle + (i * Math.PI / 5);
+                enemyBullets.push({x: this.x, y: this.y, a: a, s: 4.5});
+            }
+        }
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.strokeStyle = "#f0f"; ctx.lineWidth = 10;
+        ctx.strokeRect(-this.r, -this.r, this.r*2, this.r*2);
+        ctx.shadowBlur = 20; ctx.shadowColor = "#f0f";
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+        ctx.strokeRect(-this.r+10, -this.r+10, this.r*2-20, this.r*2-20);
+        ctx.restore();
+    }
+}
+
+function openLootMenu() {
+    isPaused = true;
+    const menu = document.getElementById('loot-menu');
+    const options = document.getElementById('loot-options');
+    options.innerHTML = '';
+    menu.style.display = 'flex';
+
+    LOOT_TYPES.forEach(loot => {
+        const card = document.createElement('div');
+        card.className = `loot-card ${loot.color}`;
+        card.innerHTML = `<h3>${loot.name}</h3><p>${loot.desc}</p>`;
+        card.onclick = (e) => {
+            e.stopPropagation();
+            selectLoot(loot.id);
+        };
+        options.appendChild(card);
+    });
+}
+
+function selectLoot(type) {
+    player.fireMode = type;
+    if (type === 'rapid') player.fireRate = 60;
+    else player.fireRate = 200;
+    
+    // Seviyeyi artırıp XP'yi sıfırla ki sonsuz döngü olmasın
+    level++; 
+    xp = 0;
+    nextXp *= 1.5;
+    player.hp = 100;
+    
+    document.getElementById('loot-menu').style.display = 'none';
+    // Önce UI kapat, sonra küçük bir gecikmeyle oyunu devam ettir (donmayı önlemek için)
+    setTimeout(() => { isPaused = false; }, 100);
+}
+
+function update() {
+    if (isPaused) return;
+
+    // Movement
+    let vx = 0, vy = 0;
+    if (keys['KeyW']) vy = -player.speed;
+    if (keys['KeyS']) vy = player.speed;
+    if (keys['KeyA']) vx = -player.speed;
+    if (keys['KeyD']) vx = player.speed;
+    player.x += vx; player.y += vy;
+    if (vx !== 0 || vy !== 0) player.angle = Math.atan2(vy, vx);
+
+    // Shooting
+    let now = Date.now();
+    if (keys['Space'] && now - player.lastFire > player.fireRate) {
+        if (player.fireMode === 'triple') {
+            for(let i=-1; i<=1; i++) bullets.push({x: player.x, y: player.y, a: player.angle + i*0.25, s: 13});
+        } else if (player.fireMode === 'nova') {
+            for(let i=0; i<16; i++) bullets.push({x: player.x, y: player.y, a: i*(Math.PI/8), s: 9});
+        } else {
+            bullets.push({x: player.x, y: player.y, a: player.angle, s: 13});
+        }
+        player.lastFire = now;
+    }
+
+    // Boss Spawn
+    if (!boss && level % 5 === 0) {
+        boss = new Boss();
+        enemies = []; // Boss varken küçükleri temizle
+    }
+
+    // Boss Update
+    if (boss) {
+        boss.update();
+        bullets.forEach((b, i) => {
+            if(Math.hypot(boss.x - b.x, boss.y - b.y) < boss.r) {
+                boss.hp -= 2; bullets.splice(i, 1);
+                if(boss.hp <= 0) {
+                    boss = null;
+                    enemies = []; enemyBullets = [];
+                    openLootMenu();
+                }
+            }
+        });
+    }
+
+    // Sabit Düşman Doğumu: 2 Saniyede 1 (2000ms)
+    if (!boss && now - lastEnemySpawn > 2000) {
+        enemies.push({
+            x: Math.random() < 0.5 ? -20 : canvas.width + 20,
+            y: Math.random() * canvas.height,
+            s: 2 + (level * 0.1),
+            r: 15,
+            update: function() {
+                let a = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(a)*this.s; this.y += Math.sin(a)*this.s;
+            }
+        });
+        lastEnemySpawn = now;
+    }
+
+    // Enemy Collisions
+    enemies.forEach((e, ei) => {
+        e.update();
+        bullets.forEach((b, bi) => {
+            if(Math.hypot(e.x - b.x, e.y - b.y) < 20) {
+                enemies.splice(ei, 1); bullets.splice(bi, 1);
+                score += 10; xp += 25;
+            }
+        });
+        if(Math.hypot(e.x - player.x, e.y - player.y) < 30) player.hp -= 0.5;
+    });
+
+    // Projectile Movement
+    bullets.forEach((b, i) => {
+        b.x += Math.cos(b.a)*b.s; b.y += Math.sin(b.a)*b.s;
+        if(b.x<0 || b.x>canvas.width || b.y<0 || b.y>canvas.height) bullets.splice(i,1);
+    });
+
+    enemyBullets.forEach((eb, i) => {
+        eb.x += Math.cos(eb.a)*eb.s; eb.y += Math.sin(eb.a)*eb.s;
+        if(Math.hypot(eb.x - player.x, eb.y - player.y) < 15) { player.hp -= 8; enemyBullets.splice(i,1); }
+        if(eb.x<0 || eb.x>canvas.width || eb.y<0 || eb.y>canvas.height) enemyBullets.splice(i,1);
+    });
+
+    // Leveling System Fix
+    if(xp >= nextXp && !boss && !isPaused) {
+        level++; xp = 0; nextXp *= 1.4;
+    }
+
+    if(player.hp <= 0) { alert("MISSION FAILED. SCORE: " + score); location.reload(); }
+
+    document.getElementById('hp-fill').style.width = player.hp + "%";
+    document.getElementById('xp-fill').style.width = (xp/nextXp*100) + "%";
+    document.getElementById('score').innerText = score;
+    document.getElementById('lvl').innerText = level;
+}
+
+function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    bullets.forEach(b => { ctx.fillStyle="#0ff"; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
+    enemyBullets.forEach(eb => { ctx.fillStyle="#f0f"; ctx.beginPath(); ctx.arc(eb.x, eb.y, 5, 0, Math.PI*2); ctx.fill(); });
+    enemies.forEach(e => {
+        ctx.fillStyle="#f44"; ctx.beginPath(); 
+        ctx.moveTo(e.x, e.y-12); ctx.lineTo(e.x+12, e.y+12); ctx.lineTo(e.x-12, e.y+12); ctx.closePath(); ctx.fill();
+    });
+    if(boss) boss.draw();
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    ctx.strokeStyle = "#0ff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(22,0); ctx.lineTo(-12,-14); ctx.lineTo(-12,14); ctx.closePath(); ctx.stroke();
+    ctx.restore();
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+loop();
+</script>
+</body>
+</html>
